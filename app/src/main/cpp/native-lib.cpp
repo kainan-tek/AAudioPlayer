@@ -5,15 +5,14 @@
 #include <thread>
 #include <unistd.h>
 #include <vector>
+#include <fcntl.h>
 #include <aaudio/AAudio.h>
-#include "log.h"
+#include "common.h"
 
-#define ENABLE_CALLBACK 1
-
-aaudio_usage_t usage = AAUDIO_USAGE_MEDIA;
-aaudio_content_type_t content = AAUDIO_CONTENT_TYPE_MUSIC;
+aaudio_usage_t usage = AAUDIO_USAGE_VOICE_COMMUNICATION;
+aaudio_content_type_t content = AAUDIO_CONTENT_TYPE_SPEECH;
 int32_t sampleRate = 48000;
-int32_t channelCount = 2;
+int32_t channelCount = 1;
 // aaudio_channel_mask_t channelMask = AAUDIO_CHANNEL_STEREO;
 aaudio_format_t format = AAUDIO_FORMAT_PCM_I16;
 aaudio_direction_t direction = AAUDIO_DIRECTION_OUTPUT;
@@ -28,15 +27,45 @@ bool isStart = false;
 AAudioStreamBuilder *builder = nullptr;
 AAudioStream *aaudioStream = nullptr;
 std::ifstream inputFile;
-std::string audioFile = "/data/48k_2ch_16bit.raw";
+// audio file should be sine wave data wile testing latency
+std::string audioFile = "/data/48k_1ch_16bit.raw";
 
-#if ENABLE_CALLBACK
+#ifdef LATENCY_TEST
+static int32_t cycle = 0;
+static int32_t invert_flag = 0;
+#endif
+
+#ifdef ENABLE_CALLBACK
 aaudio_data_callback_result_t dataCallback(AAudioStream *stream __unused, void *userData __unused, void *audioData, int32_t
 numFrames)
 {
     // ALOGI("aaudio dataCallback, numFrames:%d, channelCount:%d, bytesPerChannel:%d\n", numFrames, mChannelCount, mBytesPerChannel);
     if (numFrames > 0) {
         if (inputFile.is_open()) {
+#ifdef LATENCY_TEST
+            if (cycle == WRITE_CYCLE) {
+                invert_flag = 1;
+            }
+            if (cycle == 2 * WRITE_CYCLE) {
+                cycle = 0;
+                invert_flag = 0;
+            }
+            if (invert_flag == 1) {
+                memset(audioData, 0, numFrames * channelCount * bytesPerChannel);
+                gpio_set_low();
+            } else {
+                inputFile.read(static_cast<char *>(audioData), numFrames * channelCount * bytesPerChannel);
+                gpio_set_high();
+                int32_t bytesRead = inputFile.gcount();
+                ALOGD("aaudio dataCallback, request numFrames:%d, bytesRead:%d\n", numFrames, bytesRead);
+                if (inputFile.eof()) {
+                    ALOGI("aaudio read data file end\n");
+                    inputFile.close();
+                    return AAUDIO_CALLBACK_RESULT_STOP;
+                }
+            }
+            cycle++;
+#else
             inputFile.read(static_cast<char *>(audioData), numFrames * channelCount * bytesPerChannel);
             int32_t bytesRead = inputFile.gcount();
             ALOGD("aaudio dataCallback, request numFrames:%d, bytesRead:%d\n", numFrames, bytesRead);
@@ -45,6 +74,7 @@ numFrames)
                 inputFile.close();
                 return AAUDIO_CALLBACK_RESULT_STOP;
             }
+#endif
         } else {
             ALOGI("aaudio data file closed\n");
             return AAUDIO_CALLBACK_RESULT_STOP;
@@ -62,6 +92,11 @@ void errorCallback(AAudioStream *stream __unused, void *userData __unused, aaudi
 bool stopAAudioPlayback();
 bool startAAudioPlayback()
 {
+#ifdef LATENCY_TEST
+    cycle = 0;
+    invert_flag = 0;
+#endif
+
     ALOGI("start AAudioPlayback, isStart: %d\n", isStart);
     if (isStart) {
         ALOGI("in starting status, needn't start again\n");
@@ -102,7 +137,7 @@ bool startAAudioPlayback()
     // AAudioStreamBuilder_setFramesPerDataCallback(builder, AAUDIO_UNSPECIFIED);
     // AAudioStreamBuilder_setAllowedCapturePolicy(builder, AAUDIO_ALLOW_CAPTURE_BY_ALL);
     // AAudioStreamBuilder_setPrivacySensitive(builder, false);
-#if ENABLE_CALLBACK
+#ifdef ENABLE_CALLBACK
     AAudioStreamBuilder_setDataCallback(builder, dataCallback, nullptr);
     AAudioStreamBuilder_setErrorCallback(builder, errorCallback, nullptr);
 #endif
@@ -164,7 +199,7 @@ bool startAAudioPlayback()
     {
         if (!inputFile.is_open()) break;
         if (inputFile.is_open() && inputFile.eof()) break;
-#if !ENABLE_CALLBACK
+#ifndef ENABLE_CALLBACK
 		std::vector<char> dataBuf(actualBufferSize * actualChannelCount * bytesPerChannel);
         inputFile.read(dataBuf.data(), framesPerBurst * actualChannelCount * bytesPerChannel);
         int32_t bytes2Write = inputFile.gcount();
@@ -231,6 +266,31 @@ bool stopAAudioPlayback()
     }
     return true;
 }
+
+#ifdef LATENCY_TEST
+void gpio_set_high(void)
+{
+    int fd = open(GPIO_FILE, O_RDWR);
+    if (fd != -1) {
+        write(fd, GPIO_VAL_H, sizeof(GPIO_VAL_H));
+        close(fd);
+    } else {
+        ALOGE("failed to open gpio file");
+    }
+}
+
+void gpio_set_low(void)
+{
+    int fd = open(GPIO_FILE, O_RDWR);
+    if (fd != -1)
+    {
+        write(fd, GPIO_VAL_L, sizeof(GPIO_VAL_L));
+        close(fd);
+    } else {
+        ALOGE("failed to open gpio file");
+    }
+}
+#endif
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_example_aaudioplayer_MainActivity_startAAudioPlaybackFromJNI(JNIEnv *env __unused, jobject)
