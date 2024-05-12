@@ -110,7 +110,7 @@ bool startAAudioPlayback()
 
     // prepare data
     inputFile.open(audioFile, std::ios::in | std::ios::binary);
-    if (!inputFile.is_open()) {
+    if (!inputFile.is_open() || !inputFile.good()) {
         ALOGE("AAudioPlayer error opening file\n");
         isStart = false;
         return false;
@@ -257,6 +257,10 @@ bool stopAAudioPlayback()
             ALOGE("aaudio request stop error, ret %d %s\n", result, AAudio_convertResultToText(result));
         }
 
+        aaudio_stream_state_t currentState = AAudioStream_getState(aaudioStream);
+        if (currentState != AAUDIO_STREAM_STATE_STOPPED) {
+            ALOGW("AAudioStream_waitForStateChange %s\n", AAudio_convertStreamStateToText(currentState));
+        }
         if (aaudioStream != nullptr) {
             AAudioStream_close(aaudioStream);
             aaudioStream = nullptr;

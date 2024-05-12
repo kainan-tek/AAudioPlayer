@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity() {
         class AAudioThread : Thread() {
             override fun run() {
                 super.run()
+                // Log.d("MainActivity", "startAAudioPlaybackFromJNI")
                 startAAudioPlaybackFromJNI()
             }
         }
@@ -38,6 +39,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopAAudioPlayback() {
+        // Log.d("MainActivity", "stopAAudioPlaybackFromJNI")
         stopAAudioPlaybackFromJNI()
     }
 
