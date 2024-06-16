@@ -67,8 +67,8 @@ numFrames)
             cycle++;
 #else
             inputFile.read(static_cast<char *>(audioData), numFrames * channelCount * bytesPerChannel);
-            int32_t bytesRead = inputFile.gcount();
-            ALOGD("aaudio dataCallback, request numFrames:%d, bytesRead:%d\n", numFrames, bytesRead);
+            // int32_t bytesRead = inputFile.gcount();
+            // ALOGD("aaudio dataCallback, request numFrames:%d, bytesRead:%d\n", numFrames, bytesRead);
             if (inputFile.eof()) {
                 ALOGI("aaudio read data file end\n");
                 inputFile.close();
@@ -89,6 +89,7 @@ void errorCallback(AAudioStream *stream __unused, void *userData __unused, aaudi
 }
 #endif
 
+void stopPlayback();
 bool stopAAudioPlayback();
 bool startAAudioPlayback()
 {
@@ -195,80 +196,77 @@ bool startAAudioPlayback()
     aaudio_stream_state_t state = AAudioStream_getState(aaudioStream);
     ALOGI("after request start, state = %s\n", AAudio_convertStreamStateToText(state));
 
+    std::vector<char> dataBuf(actualBufferSize * actualChannelCount * bytesPerChannel);
     while (aaudioStream)
     {
         if (!inputFile.is_open()) break;
         if (inputFile.is_open() && inputFile.eof()) break;
 #ifndef ENABLE_CALLBACK
-		std::vector<char> dataBuf(actualBufferSize * actualChannelCount * bytesPerChannel);
         inputFile.read(dataBuf.data(), framesPerBurst * actualChannelCount * bytesPerChannel);
         int32_t bytes2Write = inputFile.gcount();
         int32_t framesPerWrite = framesPerBurst;
+        int32_t framesWritten = 0;
+        // Only complete frames will be written
         if (bytes2Write != framesPerBurst * actualChannelCount * bytesPerChannel) {
             ALOGW("aaudio read file, framesPerBurst:%d, bytes2Write:%d\n", framesPerBurst, bytes2Write);
             framesPerWrite = (int32_t)(bytes2Write / actualChannelCount / bytesPerChannel);
             if (framesPerWrite == 0) continue;
         }
-        char *temp_bytesData = dataBuf.data();
-        for (int i = 0; i < 4; i++)
+
+        while (framesWritten < framesPerWrite)
         {
-            if (aaudioStream == nullptr) break;
-            if (AAudioStream_getState(aaudioStream) >= AAUDIO_STREAM_STATE_STOPPING) break;
-            // TBD should add mutex here, avoid to write during closing.
-            result = AAudioStream_write(aaudioStream, temp_bytesData, framesPerWrite, 60 * 1000 * 1000);
-            if (result > 0) {
-                ALOGD("AAudioPlayer aaudio write framesPerWrite:%d, ret:%d\n", framesPerWrite, result);
-                if (result == framesPerWrite) break;
-                framesPerWrite -= result;
-                temp_bytesData += result * actualChannelCount * bytesPerChannel;
-            }
+            result = AAudioStream_write(aaudioStream, (char*)dataBuf.data() + framesWritten * actualChannelCount *
+            bytesPerChannel, framesPerWrite - framesWritten, 40 * 1000 * 1000);
             if (result < 0) {
-                ALOGE("AAudioPlayer aaudio write error, ret %d %s\n", result, AAudio_convertResultToText(result));
+                ALOGE("AAudio write failed, result %d %s\n", result, AAudio_convertResultToText(result));
+                isStart = false;
                 break;
             }
-            usleep(2 * 1000);
+            framesWritten += result;
         }
 #endif
+        if (!isStart)
+            stopPlayback();
 		usleep(2 * 1000);
     }
-
-	if (aaudioStream) stopAAudioPlayback();
     return true;
 }
-
 
 bool stopAAudioPlayback()
 {
     ALOGI("stop AAudioPlayback, isStart: %d\n", isStart);
-	if (isStart) {
+	if (isStart)
         isStart = false;
-		int32_t xRunCount = AAudioStream_getXRunCount(aaudioStream);
-        ALOGI("AAudioStream_getXRunCount %d\n", xRunCount);
-        aaudio_result_t result = AAudioStream_requestStop(aaudioStream);
-		if (result == AAUDIO_OK) {
-			aaudio_stream_state_t currentState = AAudioStream_getState(aaudioStream);
-			aaudio_stream_state_t inputState = currentState;
-			while (result == AAUDIO_OK && currentState != AAUDIO_STREAM_STATE_STOPPED)
-			{
-				result = AAudioStream_waitForStateChange(aaudioStream, inputState, &currentState, 60 * 1000 * 1000);
-				inputState = currentState;
-			}
-		} else {
-            ALOGE("aaudio request stop error, ret %d %s\n", result, AAudio_convertResultToText(result));
-        }
-
-        aaudio_stream_state_t currentState = AAudioStream_getState(aaudioStream);
-        if (currentState != AAUDIO_STREAM_STATE_STOPPED) {
-            ALOGW("AAudioStream_waitForStateChange %s\n", AAudio_convertStreamStateToText(currentState));
-        }
-        if (aaudioStream != nullptr) {
-            AAudioStream_close(aaudioStream);
-            aaudioStream = nullptr;
-        }
-        if (inputFile.is_open()) inputFile.close();
-        // isStart = false;
-    }
     return true;
+}
+
+void stopPlayback()
+{
+    int32_t xRunCount = AAudioStream_getXRunCount(aaudioStream);
+    ALOGI("AAudioStream_getXRunCount %d\n", xRunCount);
+    aaudio_result_t result = AAudioStream_requestStop(aaudioStream);
+    if (result == AAUDIO_OK) {
+        aaudio_stream_state_t currentState = AAudioStream_getState(aaudioStream);
+        aaudio_stream_state_t inputState = currentState;
+        while (result == AAUDIO_OK && currentState != AAUDIO_STREAM_STATE_STOPPED)
+        {
+            result = AAudioStream_waitForStateChange(aaudioStream, inputState, &currentState, 60 * 1000 * 1000);
+            inputState = currentState;
+        }
+    } else {
+        ALOGE("aaudio request stop error, ret %d %s\n", result, AAudio_convertResultToText(result));
+    }
+
+    aaudio_stream_state_t currentState = AAudioStream_getState(aaudioStream);
+    if (currentState != AAUDIO_STREAM_STATE_STOPPED) {
+        ALOGW("AAudioStream_waitForStateChange %s\n", AAudio_convertStreamStateToText(currentState));
+    }
+    if (aaudioStream != nullptr) {
+        AAudioStream_close(aaudioStream);
+        aaudioStream = nullptr;
+    }
+    if (inputFile.is_open())
+        inputFile.close();
 }
 
 #ifdef LATENCY_TEST

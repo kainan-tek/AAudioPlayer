@@ -13,7 +13,7 @@
 #define ALOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define ALOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
-#define ENABLE_CALLBACK  // AAudio callback
+// #define ENABLE_CALLBACK  // AAudio callback
 // #define LATENCY_TEST     // latency test with gpio
 
 #ifdef LATENCY_TEST
