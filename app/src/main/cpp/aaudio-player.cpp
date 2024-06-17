@@ -61,6 +61,7 @@ numFrames)
                 if (inputFile.eof()) {
                     ALOGI("aaudio read data file end\n");
                     inputFile.close();
+                    isStart = false;
                     return AAUDIO_CALLBACK_RESULT_STOP;
                 }
             }
@@ -72,6 +73,7 @@ numFrames)
             if (inputFile.eof()) {
                 ALOGI("aaudio read data file end\n");
                 inputFile.close();
+                isStart = false;
                 return AAUDIO_CALLBACK_RESULT_STOP;
             }
 #endif
@@ -199,20 +201,21 @@ bool startAAudioPlayback()
     std::vector<char> dataBuf(actualBufferSize * actualChannelCount * bytesPerChannel);
     while (aaudioStream)
     {
-        if (!inputFile.is_open()) break;
-        if (inputFile.is_open() && inputFile.eof()) break;
-#ifndef ENABLE_CALLBACK
+#ifdef ENABLE_CALLBACK
+        usleep(10 * 1000);
+#else
         inputFile.read(dataBuf.data(), framesPerBurst * actualChannelCount * bytesPerChannel);
+        if (inputFile.eof()) isStart = false;
         int32_t bytes2Write = inputFile.gcount();
         int32_t framesPerWrite = framesPerBurst;
-        int32_t framesWritten = 0;
         // Only complete frames will be written
         if (bytes2Write != framesPerBurst * actualChannelCount * bytesPerChannel) {
-            ALOGW("aaudio read file, framesPerBurst:%d, bytes2Write:%d\n", framesPerBurst, bytes2Write);
             framesPerWrite = (int32_t)(bytes2Write / actualChannelCount / bytesPerChannel);
-            if (framesPerWrite == 0) continue;
+            ALOGW("aaudio read file, framesPerBurst:%d, bytes2Write:%d, framesPerWrite:%d\n", framesPerBurst,
+                  bytes2Write, framesPerWrite);
         }
 
+        int32_t framesWritten = 0;
         while (framesWritten < framesPerWrite)
         {
             result = AAudioStream_write(aaudioStream, (char*)dataBuf.data() + framesWritten * actualChannelCount *
@@ -227,7 +230,6 @@ bool startAAudioPlayback()
 #endif
         if (!isStart)
             stopPlayback();
-		usleep(2 * 1000);
     }
     return true;
 }
