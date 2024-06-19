@@ -9,10 +9,10 @@
 #include <aaudio/AAudio.h>
 #include "common.h"
 
-aaudio_usage_t usage = AAUDIO_USAGE_VOICE_COMMUNICATION;
-aaudio_content_type_t content = AAUDIO_CONTENT_TYPE_SPEECH;
+aaudio_usage_t usage = AAUDIO_USAGE_MEDIA;
+aaudio_content_type_t content = AAUDIO_CONTENT_TYPE_MUSIC;
 int32_t sampleRate = 48000;
-int32_t channelCount = 1;
+int32_t channelCount = 2;
 // aaudio_channel_mask_t channelMask = AAUDIO_CHANNEL_STEREO;
 aaudio_format_t format = AAUDIO_FORMAT_PCM_I16;
 aaudio_direction_t direction = AAUDIO_DIRECTION_OUTPUT;
@@ -28,7 +28,7 @@ AAudioStreamBuilder *builder = nullptr;
 AAudioStream *aaudioStream = nullptr;
 std::ifstream inputFile;
 // audio file should be sine wave data wile testing latency
-std::string audioFile = "/data/48k_1ch_16bit.raw";
+std::string audioFile = "/data/48k_2ch_16bit.raw";
 
 #ifdef LATENCY_TEST
 static int32_t cycle = 0;
@@ -36,10 +36,11 @@ static int32_t invert_flag = 0;
 #endif
 
 #ifdef ENABLE_CALLBACK
-aaudio_data_callback_result_t dataCallback(AAudioStream *stream __unused, void *userData __unused, void *audioData, int32_t
-numFrames)
+aaudio_data_callback_result_t dataCallback(AAudioStream *stream __unused, void *userData __unused, void *audioData,
+                                           int32_t numFrames)
 {
-    // ALOGI("aaudio dataCallback, numFrames:%d, channelCount:%d, bytesPerChannel:%d\n", numFrames, mChannelCount, mBytesPerChannel);
+    // ALOGI("aaudio dataCallback, numFrames:%d, channelCount:%d, bytesPerChannel:%d\n", numFrames, channelCount,
+    // bytesPerChannel);
     if (numFrames > 0) {
         if (inputFile.is_open()) {
 #ifdef LATENCY_TEST
@@ -163,7 +164,8 @@ bool startAAudioPlayback()
     int32_t actualDataFormat = AAudioStream_getFormat(aaudioStream);
     int32_t actualBufferSize = AAudioStream_getBufferSizeInFrames(aaudioStream);
     ALOGI("get AAudio params: actualSampleRate:%d, actualChannelCount:%d, actualDataFormat:%d, actualBufferSize:%d, "
-          "framesPerBurst:%d\n", actualSampleRate, actualChannelCount, actualDataFormat, actualBufferSize, framesPerBurst);
+          "framesPerBurst:%d\n", actualSampleRate, actualChannelCount, actualDataFormat, actualBufferSize,
+          framesPerBurst);
 
     switch (actualDataFormat)
     {
@@ -187,7 +189,7 @@ bool startAAudioPlayback()
     // request start
     result = AAudioStream_requestStart(aaudioStream);
     if (result != AAUDIO_OK) {
-        ALOGE("AAudioStream_requestStart(input) returned %d %s\n", result, AAudio_convertResultToText(result));
+        ALOGE("AAudioStream_requestStart returned %d %s\n", result, AAudio_convertResultToText(result));
         if (aaudioStream != nullptr) {
             AAudioStream_close(aaudioStream);
             aaudioStream = nullptr;
