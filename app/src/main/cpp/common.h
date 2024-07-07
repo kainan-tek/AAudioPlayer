@@ -7,15 +7,16 @@
 
 #include <android/log.h>
 
-#define LOG_TAG  "AAudioPlayer"
+#define LOG_TAG "AAudioPlayer"
 #define ALOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #define ALOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
 #define ALOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define ALOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
-#define ENABLE_CALLBACK  // AAudio callback
-// #define LATENCY_TEST     // latency test with gpio
+#define ENABLE_CALLBACK 1 // AAudio callback
+#define USE_WAV_HEADER 1
 
+// #define LATENCY_TEST 1  // latency test with gpio
 #ifdef LATENCY_TEST
 #define WRITE_CYCLE 100
 #define GPIO_FILE "/sys/class/gpio/gpio376/value"
@@ -24,6 +25,6 @@
 
 void gpio_set_low(void);
 void gpio_set_high(void);
-#endif //LATENCY_TEST
+#endif // LATENCY_TEST
 
-#endif //AAUDIOPLAYER_LOG_H
+#endif // AAUDIOPLAYER_LOG_H
