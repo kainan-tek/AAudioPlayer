@@ -10,6 +10,7 @@
 #include "common.h"
 #include "wav-header.h"
 
+// need change the usage and content in MainActivity.kt file at the same time
 aaudio_usage_t usage = AAUDIO_USAGE_MEDIA;
 aaudio_content_type_t content = AAUDIO_CONTENT_TYPE_MUSIC;
 // if define USE_WAV_HEADER, parse wav header to get sampleRate, channelCount and bitsPerSample
@@ -118,12 +119,13 @@ bool startAAudioPlayback()
     invert_flag = 0;
 #endif
 
-    ALOGI("start AAudioPlayback, isStart: %d\n", isStart);
     if (isStart)
     {
         ALOGI("in starting status, needn't start again\n");
         return false;
     }
+    ALOGI("isStart: %d, start AAudioPlayback\n", isStart);
+
     if (aaudioStream && AAudioStream_getState(aaudioStream) != AAUDIO_STREAM_STATE_CLOSED)
     {
         ALOGI("stream not in closed status, try again later\n"); // avoid start again during closing
@@ -133,10 +135,11 @@ bool startAAudioPlayback()
 
     if (access(audioFile.c_str(), F_OK) == -1)
     {
-        ALOGE("file %s not exist\n", audioFile.c_str());
+        ALOGE("audio file %s not exist\n", audioFile.c_str());
         isStart = false;
         return false;
     }
+    ALOGI("audio file path: %s\n", audioFile.c_str());
 
 #ifdef USE_WAV_HEADER
     /* read wav header */
@@ -202,12 +205,12 @@ bool startAAudioPlayback()
     AAudioStreamBuilder_setContentType(builder, content);
     AAudioStreamBuilder_setSampleRate(builder, sampleRate);
     AAudioStreamBuilder_setChannelCount(builder, channelCount);
-    // AAudioStreamBuilder_setChannelMask(builder, channelMask);
     AAudioStreamBuilder_setFormat(builder, format);
     AAudioStreamBuilder_setDirection(builder, direction);
     AAudioStreamBuilder_setPerformanceMode(builder, performanceMode);
     AAudioStreamBuilder_setSharingMode(builder, sharingMode);
     AAudioStreamBuilder_setBufferCapacityInFrames(builder, capacityInFrames);
+    // AAudioStreamBuilder_setChannelMask(builder, channelMask);
     // AAudioStreamBuilder_setDeviceId(builder, AAUDIO_UNSPECIFIED);
     // AAudioStreamBuilder_setFramesPerDataCallback(builder, AAUDIO_UNSPECIFIED);
     // AAudioStreamBuilder_setAllowedCapturePolicy(builder, AAUDIO_ALLOW_CAPTURE_BY_ALL);
@@ -313,9 +316,13 @@ bool startAAudioPlayback()
 
 bool stopAAudioPlayback()
 {
-    ALOGI("stop AAudioPlayback, isStart: %d\n", isStart);
-    if (isStart)
-        isStart = false;
+    if (!isStart)
+    {
+        ALOGI("in stop status, needn't stop again\n");
+        return false;
+    }
+    ALOGI("isStart: %d, stop AAudioPlayback\n", isStart);
+    isStart = false;
     return true;
 }
 
