@@ -122,10 +122,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * A native method that is implemented by the 'aaudioplayer' native library,
-     * which is packaged with this application.
-     */
     private external fun startAAudioPlaybackFromJNI()
     private external fun stopAAudioPlaybackFromJNI()
 }
