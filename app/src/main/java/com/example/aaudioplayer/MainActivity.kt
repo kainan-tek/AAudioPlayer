@@ -43,7 +43,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun initAAudioPlayback() {
+    private fun initAAudioPlayback(): Boolean {
         val audioAttributes: AudioAttributes = AudioAttributes.Builder()
             // need change the usage and content in aaudio-player.cpp file at the same time
             .setUsage(USAGE)
@@ -72,9 +72,10 @@ class MainActivity : AppCompatActivity() {
         val result = focusRequest?.let { audioManager?.requestAudioFocus(it) }
         if (result != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
             Log.e(LOG_TAG, "audioManager requestAudioFocus failed")
-            return
+            return false
         }
         Log.i(LOG_TAG, "audioManager requestAudioFocus success")
+        return true
     }
 
     // ***************** start play ********************
@@ -93,7 +94,10 @@ class MainActivity : AppCompatActivity() {
                 return
             }
             isStart = true
-            initAAudioPlayback()
+            if (!initAAudioPlayback()) {
+                isStart = false
+                return
+            }
         }
         AAudioThread().start()
     }

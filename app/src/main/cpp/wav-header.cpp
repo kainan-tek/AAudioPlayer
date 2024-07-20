@@ -4,7 +4,6 @@
 
 #include <cstdint>
 #include <fstream>
-#include "common.h"
 #include "wav-header.h"
 
 /**
@@ -18,7 +17,7 @@
  *
  * @return True if the header was written successfully, false otherwise.
  */
-bool writeWAVHeader(std::ofstream &outFile, uint32_t numSamples, uint32_t sampleRate, uint32_t numChannels, uint32_t bitsPerSample)
+[[maybe_unused]] bool writeWAVHeader(std::ofstream &outFile, uint32_t numSamples, uint32_t sampleRate, uint32_t numChannels, uint32_t bitsPerSample)
 {
     if (!outFile.is_open())
     {
@@ -91,7 +90,7 @@ bool readWAVHeader(const std::string &filename, WAVHeader &header)
  * @param outfile The output stream to write the updated header to.
  * @param data_chunk_size The size of the data chunk in bytes.
  */
-void UpdateSizes(std::ofstream &outfile, uint32_t data_chunk_size)
+[[maybe_unused]] void UpdateSizes(std::ofstream &outfile, uint32_t data_chunk_size)
 {
     // record current position
     std::streampos current_position = outfile.tellp();
