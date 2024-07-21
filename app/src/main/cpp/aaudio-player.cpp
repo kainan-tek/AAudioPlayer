@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <aaudio/AAudio.h>
 #include "common.h"
+#include "aaudio-player.h"
 #include "wav-header.h"
 
 // need change the usage and content in MainActivity.kt file at the same time
