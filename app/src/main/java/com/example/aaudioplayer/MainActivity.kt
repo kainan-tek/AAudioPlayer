@@ -1,12 +1,12 @@
 package com.example.aaudioplayer
 
-import android.media.AudioManager
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
-import androidx.appcompat.app.AppCompatActivity
+import android.media.AudioManager
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
+import androidx.appcompat.app.AppCompatActivity
 import com.example.aaudioplayer.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -44,6 +44,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initAAudioPlayback(): Boolean {
+        if (!enableFocus) {
+            Log.i(LOG_TAG, "not enable audio focus function")
+            return true
+        }
         val audioAttributes: AudioAttributes = AudioAttributes.Builder()
             // need change the usage and content in aaudio-player.cpp file at the same time
             .setUsage(USAGE)
@@ -80,37 +84,33 @@ class MainActivity : AppCompatActivity() {
 
     // ***************** start play ********************
     private fun startAAudioPlayback() {
+        if (isStart) {
+            Log.i(LOG_TAG, "app in starting status, needn't start again")
+            return
+        }
+        isStart = true
+        if (!initAAudioPlayback()) {
+            isStart = false
+            return
+        }
+
         class AAudioThread : Thread() {
             override fun run() {
                 super.run()
                 // Log.d("MainActivity", "startAAudioPlaybackFromJNI")
                 startAAudioPlaybackFromJNI()
-            }
-        }
-
-        if (enableFocus) {
-            if (isStart) {
-                Log.i(LOG_TAG, "in starting status, needn't start again")
-                return
-            }
-            isStart = true
-            if (!initAAudioPlayback()) {
                 isStart = false
-                return
             }
         }
         AAudioThread().start()
     }
 
     private fun stopAAudioPlayback() {
-        // Log.d("MainActivity", "stopAAudioPlaybackFromJNI")
-        if (enableFocus) {
-            if (!isStart) {
-                Log.i(LOG_TAG, "in stop status, needn't stop again")
-                return
-            }
-            isStart = false
+        if (!isStart) {
+            Log.i(LOG_TAG, "app in stop status, needn't stop again")
+            return
         }
+        isStart = false
         stopAAudioPlaybackFromJNI()
         if (enableFocus) {
             val result = focusRequest?.let { audioManager?.abandonAudioFocusRequest(it) }

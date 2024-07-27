@@ -11,133 +11,46 @@
 #include "aaudio-player.h"
 #include "wav-header.h"
 
-// need change the usage and content in MainActivity.kt file at the same time
-aaudio_usage_t usage = AAUDIO_USAGE_MEDIA;
-aaudio_content_type_t content = AAUDIO_CONTENT_TYPE_MUSIC;
-// if define USE_WAV_HEADER, parse wav header to get sampleRate, channelCount and bitsPerSample
-int32_t sampleRate = 48000;
-int32_t channelCount = 2;
-aaudio_format_t format = AAUDIO_FORMAT_PCM_I16;
-int32_t capacityInFrames = sampleRate / 1000 * 40;
-int32_t framesPerBurst = sampleRate / 1000 * 10;
+int32_t AAudioPlayer::bytesPerFrame = 0;
+std::ifstream AAudioPlayer::inputFile;
+#ifdef LATENCY_TEST
+int32_t AAudioPlayer::cycle = 0;
+int32_t AAudioPlayer::invert_flag = 0;
+#endif
 
-aaudio_direction_t direction = AAUDIO_DIRECTION_OUTPUT;
-aaudio_sharing_mode_t sharingMode = AAUDIO_SHARING_MODE_SHARED;
-aaudio_performance_mode_t performanceMode = AAUDIO_PERFORMANCE_MODE_LOW_LATENCY;
-int32_t bytesPerChannel = 2;
-int32_t numOfBursts = 2;
-bool isStart = false;
-
-AAudioStreamBuilder *builder = nullptr;
-AAudioStream *aaudioStream = nullptr;
-std::ifstream inputFile;
-// audio file should be sine wave data wile testing latency
+AAudioPlayer::AAudioPlayer() : usage(AAUDIO_USAGE_MEDIA),
+                               content(AAUDIO_CONTENT_TYPE_MUSIC),
+                               sampleRate(48000),
+                               channelCount(2),
+                               format(AAUDIO_FORMAT_PCM_I16),
+                               framesPerBurst(480),
+                               numOfBursts(2),
+                               direction(AAUDIO_DIRECTION_OUTPUT),
+                               sharingMode(AAUDIO_SHARING_MODE_SHARED),
+                               performanceMode(AAUDIO_PERFORMANCE_MODE_LOW_LATENCY),
+                               isPlaying(false),
+                               aaudioStream(nullptr)
+{
+    bytesPerFrame = 0;
 #ifdef USE_WAV_HEADER
-std::string audioFile = "/data/48k_2ch_16bit.wav";
+    audioFile = "/data/48k_2ch_16bit.wav";
 #else
-std::string audioFile = "/data/48k_2ch_16bit.raw";
+    audioFile = "/data/48k_2ch_16bit.raw";
 #endif
-
-#ifdef LATENCY_TEST
-static int32_t cycle = 0;
-static int32_t invert_flag = 0;
-#endif
-
-#ifdef ENABLE_CALLBACK
-aaudio_data_callback_result_t dataCallback(AAudioStream *stream __unused, void *userData __unused, void *audioData,
-                                           int32_t numFrames)
-{
-    // ALOGI("aaudio dataCallback, numFrames:%d, channelCount:%d, bytesPerChannel:%d\n", numFrames, channelCount,
-    // bytesPerChannel);
-    if (numFrames > 0)
-    {
-        if (inputFile.is_open())
-        {
-#ifdef LATENCY_TEST
-            if (cycle == WRITE_CYCLE)
-            {
-                invert_flag = 1;
-            }
-            if (cycle == 2 * WRITE_CYCLE)
-            {
-                cycle = 0;
-                invert_flag = 0;
-            }
-            if (invert_flag == 1)
-            {
-                memset(audioData, 0, numFrames * channelCount * bytesPerChannel);
-                gpio_set_low();
-            }
-            else
-            {
-                inputFile.read(static_cast<char *>(audioData), numFrames * channelCount * bytesPerChannel);
-                gpio_set_high();
-                int32_t bytesRead = inputFile.gcount();
-                ALOGD("aaudio dataCallback, request numFrames:%d, bytesRead:%d\n", numFrames, bytesRead);
-                if (inputFile.eof())
-                {
-                    ALOGI("aaudio read data file end\n");
-                    inputFile.close();
-                    isStart = false;
-                    return AAUDIO_CALLBACK_RESULT_STOP;
-                }
-            }
-            cycle++;
-#else
-            inputFile.read(static_cast<char *>(audioData), numFrames * channelCount * bytesPerChannel);
-            // int32_t bytesRead = inputFile.gcount();
-            // ALOGD("aaudio dataCallback, request numFrames:%d, bytesRead:%d\n", numFrames, bytesRead);
-            if (inputFile.eof())
-            {
-                ALOGI("aaudio read data file end\n");
-                inputFile.close();
-                isStart = false;
-                return AAUDIO_CALLBACK_RESULT_STOP;
-            }
-#endif
-        }
-        else
-        {
-            ALOGI("aaudio data file closed\n");
-            return AAUDIO_CALLBACK_RESULT_STOP;
-        }
-    }
-    return AAUDIO_CALLBACK_RESULT_CONTINUE;
 }
 
-void errorCallback(AAudioStream *stream __unused, void *userData __unused, aaudio_result_t error __unused)
-{
-    ALOGI("errorCallback\n");
-}
-#endif
+AAudioPlayer::~AAudioPlayer() = default;
 
-void stopPlayback();
-bool stopAAudioPlayback();
-bool startAAudioPlayback()
+bool AAudioPlayer::startAAudioPlayback()
 {
 #ifdef LATENCY_TEST
     cycle = 0;
     invert_flag = 0;
 #endif
 
-    if (isStart)
-    {
-        ALOGI("in starting status, needn't start again\n");
-        return false;
-    }
-    ALOGI("isStart: %d, start AAudioPlayback\n", isStart);
-
-    if (aaudioStream && AAudioStream_getState(aaudioStream) != AAUDIO_STREAM_STATE_CLOSED)
-    {
-        ALOGI("stream not in closed status, try again later\n"); // avoid start again during closing
-        return false;
-    }
-    isStart = true;
-
     if (access(audioFile.c_str(), F_OK) == -1)
     {
         ALOGE("audio file %s not exist\n", audioFile.c_str());
-        isStart = false;
         return false;
     }
     ALOGI("audio file path: %s\n", audioFile.c_str());
@@ -148,7 +61,6 @@ bool startAAudioPlayback()
     if (!readWAVHeader(audioFile, header))
     {
         ALOGE("readWAVHeader error\n");
-        isStart = false;
         return false;
     }
     // header.print();
@@ -174,7 +86,6 @@ bool startAAudioPlayback()
     else
     {
         ALOGE("unsupported format and bitsPerSample\n");
-        isStart = false;
         return false;
     }
     ALOGI("wav header params: sampleRate:%d, channelCount:%d, format:%d\n", sampleRate, channelCount, format);
@@ -185,7 +96,6 @@ bool startAAudioPlayback()
     if (!inputFile.is_open() || !inputFile.good())
     {
         ALOGE("AAudioPlayer error opening file\n");
-        isStart = false;
         return false;
     }
 
@@ -194,12 +104,12 @@ bool startAAudioPlayback()
     inputFile.seekg(sizeof(WAVHeader), std::ios::beg);
 #endif
 
+    AAudioStreamBuilder *builder{nullptr};
     // Use an AAudioStreamBuilder to contain requested parameters.
     aaudio_result_t result = AAudio_createStreamBuilder(&builder);
     if (result != AAUDIO_OK)
     {
         ALOGE("AAudio_createStreamBuilder() returned %d %s\n", result, AAudio_convertResultToText(result));
-        isStart = false;
         return false;
     }
     AAudioStreamBuilder_setUsage(builder, usage);
@@ -210,7 +120,7 @@ bool startAAudioPlayback()
     AAudioStreamBuilder_setDirection(builder, direction);
     AAudioStreamBuilder_setPerformanceMode(builder, performanceMode);
     AAudioStreamBuilder_setSharingMode(builder, sharingMode);
-    AAudioStreamBuilder_setBufferCapacityInFrames(builder, capacityInFrames);
+    AAudioStreamBuilder_setBufferCapacityInFrames(builder, sampleRate / 1000 * 40);
     // AAudioStreamBuilder_setChannelMask(builder, channelMask);
     // AAudioStreamBuilder_setDeviceId(builder, AAUDIO_UNSPECIFIED);
     // AAudioStreamBuilder_setFramesPerDataCallback(builder, AAUDIO_UNSPECIFIED);
@@ -229,7 +139,6 @@ bool startAAudioPlayback()
     if (result != AAUDIO_OK)
     {
         ALOGE("AAudioStreamBuilder_openStream() returned %d %s\n", result, AAudio_convertResultToText(result));
-        isStart = false;
         return false;
     }
     framesPerBurst = AAudioStream_getFramesPerBurst(aaudioStream);
@@ -240,24 +149,25 @@ bool startAAudioPlayback()
     int32_t actualDataFormat = AAudioStream_getFormat(aaudioStream);
     int32_t actualBufferSize = AAudioStream_getBufferSizeInFrames(aaudioStream);
     ALOGI("get AAudio params: actualSampleRate:%d, actualChannelCount:%d, actualDataFormat:%d, actualBufferSize:%d, "
-          "framesPerBurst:%d\n", actualSampleRate, actualChannelCount, actualDataFormat, actualBufferSize, framesPerBurst);
+          "framesPerBurst:%d\n",
+          actualSampleRate, actualChannelCount, actualDataFormat, actualBufferSize, framesPerBurst);
 
     switch (actualDataFormat)
     {
     case AAUDIO_FORMAT_PCM_FLOAT:
-        bytesPerChannel = 4;
+        bytesPerFrame = actualChannelCount * 4;
         break;
     case AAUDIO_FORMAT_PCM_I16:
-        bytesPerChannel = 2;
+        bytesPerFrame = actualChannelCount * 2;
         break;
     case AAUDIO_FORMAT_PCM_I24_PACKED:
-        bytesPerChannel = 3;
+        bytesPerFrame = actualChannelCount * 3;
         break;
     case AAUDIO_FORMAT_PCM_I32:
-        bytesPerChannel = 4;
+        bytesPerFrame = actualChannelCount * 4;
         break;
     default:
-        bytesPerChannel = 2;
+        bytesPerFrame = actualChannelCount * 2;
         break;
     }
 
@@ -271,27 +181,29 @@ bool startAAudioPlayback()
             AAudioStream_close(aaudioStream);
             aaudioStream = nullptr;
         }
-        isStart = false;
         return false;
     }
     aaudio_stream_state_t state = AAudioStream_getState(aaudioStream);
     ALOGI("after request start, state = %s\n", AAudio_convertStreamStateToText(state));
 
-    std::vector<char> dataBuf(actualBufferSize * actualChannelCount * bytesPerChannel);
+    isPlaying = true;
+    std::vector<char> dataBuf(actualBufferSize * bytesPerFrame);
     while (aaudioStream)
     {
 #ifdef ENABLE_CALLBACK
+        if (!inputFile.is_open())
+            isPlaying = false;
         usleep(10 * 1000);
 #else
-        inputFile.read(dataBuf.data(), framesPerBurst * actualChannelCount * bytesPerChannel);
+        inputFile.read(dataBuf.data(), framesPerBurst * bytesPerFrame);
         if (inputFile.eof())
-            isStart = false;
+            isPlaying = false;
         int32_t bytes2Write = inputFile.gcount();
         int32_t framesPerWrite = framesPerBurst;
         // Only complete frames will be written
-        if (bytes2Write != framesPerBurst * actualChannelCount * bytesPerChannel)
+        if (bytes2Write != framesPerBurst * bytesPerFrame)
         {
-            framesPerWrite = (int32_t)(bytes2Write / actualChannelCount / bytesPerChannel);
+            framesPerWrite = (int32_t)(bytes2Write / bytesPerFrame);
             ALOGW("aaudio read file, framesPerBurst:%d, bytes2Write:%d, framesPerWrite:%d\n", framesPerBurst,
                   bytes2Write, framesPerWrite);
         }
@@ -299,35 +211,29 @@ bool startAAudioPlayback()
         int32_t framesWritten = 0;
         while (framesWritten < framesPerWrite)
         {
-            result = AAudioStream_write(aaudioStream, (char *)dataBuf.data() + framesWritten * actualChannelCount * bytesPerChannel, framesPerWrite - framesWritten, 40 * 1000 * 1000);
+            result = AAudioStream_write(aaudioStream, (char *)dataBuf.data() + framesWritten * bytesPerFrame, framesPerWrite - framesWritten, 40 * 1000 * 1000);
             if (result < 0)
             {
                 ALOGE("AAudio write failed, result %d %s\n", result, AAudio_convertResultToText(result));
-                isStart = false;
+                isPlaying = false;
                 break;
             }
             framesWritten += result;
         }
 #endif
-        if (!isStart)
+        if (!isPlaying)
             stopPlayback();
     }
     return true;
 }
 
-bool stopAAudioPlayback()
+bool AAudioPlayer::stopAAudioPlayback()
 {
-    if (!isStart)
-    {
-        ALOGI("in stop status, needn't stop again\n");
-        return false;
-    }
-    ALOGI("isStart: %d, stop AAudioPlayback\n", isStart);
-    isStart = false;
+    isPlaying = false;
     return true;
 }
 
-void stopPlayback()
+void AAudioPlayer::stopPlayback()
 {
     int32_t xRunCount = AAudioStream_getXRunCount(aaudioStream);
     ALOGI("AAudioStream_getXRunCount %d\n", xRunCount);
@@ -361,8 +267,74 @@ void stopPlayback()
         inputFile.close();
 }
 
+#ifdef ENABLE_CALLBACK
+aaudio_data_callback_result_t
+AAudioPlayer::dataCallback(AAudioStream *stream, void *userData, void *audioData, int32_t numFrames)
+{
+    // ALOGI("aaudio dataCallback, numFrames:%d, channelCount:%d, bytesPerChannel:%d\n", numFrames, channelCount,
+    // bytesPerChannel);
+    if (numFrames > 0)
+    {
+        if (inputFile.is_open())
+        {
 #ifdef LATENCY_TEST
-void gpio_set_high(void)
+            if (cycle == WRITE_CYCLE)
+            {
+                invert_flag = 1;
+            }
+            if (cycle == 2 * WRITE_CYCLE)
+            {
+                cycle = 0;
+                invert_flag = 0;
+            }
+            if (invert_flag == 1)
+            {
+                memset(audioData, 0, numFrames * bytesPerFrame);
+                gpio_set_low();
+            }
+            else
+            {
+                inputFile.read(static_cast<char *>(audioData), numFrames * bytesPerFrame);
+                gpio_set_high();
+                int32_t bytesRead = inputFile.gcount();
+                ALOGD("aaudio dataCallback, request numFrames:%d, bytesRead:%d\n", numFrames, bytesRead);
+                if (inputFile.eof())
+                {
+                    ALOGI("aaudio read data file end\n");
+                    inputFile.close();
+                    return AAUDIO_CALLBACK_RESULT_STOP;
+                }
+            }
+            cycle++;
+#else
+            inputFile.read(static_cast<char *>(audioData), numFrames * bytesPerFrame);
+            // int32_t bytesRead = inputFile.gcount();
+            // ALOGD("aaudio dataCallback, request numFrames:%d, bytesRead:%d\n", numFrames, bytesRead);
+            if (inputFile.eof())
+            {
+                ALOGI("aaudio read data file end\n");
+                inputFile.close();
+                return AAUDIO_CALLBACK_RESULT_STOP;
+            }
+#endif
+        }
+        else
+        {
+            ALOGI("aaudio data file closed\n");
+            return AAUDIO_CALLBACK_RESULT_STOP;
+        }
+    }
+    return AAUDIO_CALLBACK_RESULT_CONTINUE;
+}
+
+void AAudioPlayer::errorCallback(AAudioStream *stream, void *userData, aaudio_result_t error)
+{
+    ALOGI("errorCallback\n");
+}
+#endif
+
+#ifdef LATENCY_TEST
+void AAudioPlayer::gpio_set_high()
 {
     int fd = open(GPIO_FILE, O_RDWR);
     if (fd != -1)
@@ -376,7 +348,7 @@ void gpio_set_high(void)
     }
 }
 
-void gpio_set_low(void)
+void AAudioPlayer::gpio_set_low()
 {
     int fd = open(GPIO_FILE, O_RDWR);
     if (fd != -1)
@@ -391,14 +363,18 @@ void gpio_set_low(void)
 }
 #endif
 
+AAudioPlayer *AAPlayer{nullptr};
 extern "C" JNIEXPORT void JNICALL
-Java_com_example_aaudioplayer_MainActivity_startAAudioPlaybackFromJNI(JNIEnv *env __unused, jobject)
+Java_com_example_aaudioplayer_MainActivity_startAAudioPlaybackFromJNI(JNIEnv *env, jobject thiz)
 {
-    startAAudioPlayback();
+    // TODO: implement startAAudioPlaybackFromJNI()
+    AAPlayer = new AAudioPlayer();
+    AAPlayer->startAAudioPlayback();
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_example_aaudioplayer_MainActivity_stopAAudioPlaybackFromJNI(JNIEnv *env __unused, jobject)
+Java_com_example_aaudioplayer_MainActivity_stopAAudioPlaybackFromJNI(JNIEnv *env, jobject thiz)
 {
-    stopAAudioPlayback();
+    // TODO: implement stopAAudioPlaybackFromJNI()
+    AAPlayer->stopAAudioPlayback();
 }
