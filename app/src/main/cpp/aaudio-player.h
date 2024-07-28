@@ -11,44 +11,32 @@
 #define USE_WAV_HEADER
 // #define LATENCY_TEST     // latency test with gpio
 
-#ifdef LATENCY_TEST
-#define WRITE_CYCLE 100
-#define GPIO_FILE "/sys/class/gpio/gpio376/value"
-#define GPIO_VAL_H "1"
-#define GPIO_VAL_L "0"
-#endif // LATENCY_TEST
-
 class AAudioPlayer
 {
 private:
-    aaudio_usage_t usage;
-    aaudio_content_type_t content;
-    int32_t sampleRate;
-    int32_t channelCount;
-    aaudio_format_t format;
-    int32_t framesPerBurst;
-    int32_t numOfBursts;
-    aaudio_direction_t direction;
-    aaudio_sharing_mode_t sharingMode;
-    aaudio_performance_mode_t performanceMode;
+    aaudio_usage_t m_usage;
+    aaudio_content_type_t m_content;
+    int32_t m_sampleRate;
+    int32_t m_channelCount;
+    aaudio_format_t m_format;
+    int32_t m_framesPerBurst;
+    int32_t m_numOfBursts;
+    aaudio_direction_t m_direction;
+    aaudio_sharing_mode_t m_sharingMode;
+    aaudio_performance_mode_t m_performanceMode;
 
-    bool isPlaying;
-    AAudioStream *aaudioStream;
-    std::string audioFile;
+    bool m_isPlaying;
+    AAudioStream *m_aaudioStream;
+    std::string m_audioFile;
 
-    static int32_t bytesPerFrame;
-    static std::ifstream inputFile;
+    static int32_t ms_bytesPerFrame;
+    static std::ifstream ms_inputFile;
+
+    void _stopPlayback();
 
 #ifdef ENABLE_CALLBACK
     static aaudio_data_callback_result_t dataCallback(AAudioStream *stream, void *userData, void *audioData, int32_t numFrames);
     static void errorCallback(AAudioStream *stream, void *userData, aaudio_result_t error);
-#endif
-
-#ifdef LATENCY_TEST
-    static int32_t cycle;
-    static int32_t invert_flag;
-    static void gpio_set_high();
-    static void gpio_set_low();
 #endif
 
 public:
@@ -57,6 +45,5 @@ public:
 
     bool startAAudioPlayback();
     bool stopAAudioPlayback();
-    void stopPlayback();
 };
 #endif // AAUDIOPLAYER_AAUDIO_PLAYER_H
