@@ -29,7 +29,7 @@ class MainActivity : AppCompatActivity() {
 
     // ***************** enable audio focus  ********************
     companion object {
-        private var enableFocus = true
+        private var enableFocus = false
         private const val LOG_TAG = "AAudioPlayer"
         private const val USAGE = AudioAttributes.USAGE_MEDIA
         private const val CONTENT = AudioAttributes.CONTENT_TYPE_MUSIC

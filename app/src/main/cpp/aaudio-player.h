@@ -28,11 +28,10 @@ private:
     bool m_isPlaying;
     AAudioStream *m_aaudioStream;
     std::string m_audioFile;
-
-    static int32_t ms_bytesPerFrame;
-    static std::ifstream ms_inputFile;
+    std::ifstream m_inputFile;
 
     void _stopPlayback();
+    static int32_t _getBytesPerSample(aaudio_format_t format);
 
 #ifdef ENABLE_CALLBACK
     static aaudio_data_callback_result_t dataCallback(AAudioStream *stream, void *userData, void *audioData, int32_t numFrames);
