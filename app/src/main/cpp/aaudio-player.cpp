@@ -62,6 +62,9 @@ AAudioPlayer::AAudioPlayer() : m_usage(AAUDIO_USAGE_MEDIA),
                                m_isPlaying(false),
                                m_aaudioStream(nullptr)
 {
+#ifdef ENABLE_CALLBACK
+    m_sharedBuf = new SharedBuffer(static_cast<size_t>(m_sampleRate / 1000 * 40 * m_channelCount * 2));
+#endif
 #ifdef USE_WAV_HEADER
     m_audioFile = "/data/48k_2ch_16bit.wav";
 #else
@@ -122,8 +125,8 @@ bool AAudioPlayer::startAAudioPlayback()
 #endif
 
     // prepare data
-    m_inputFile.open(m_audioFile, std::ios::in | std::ios::binary);
-    if (!m_inputFile.is_open() || !m_inputFile.good())
+    std::ifstream inputFile(m_audioFile, std::ios::in | std::ios::binary);
+    if (!inputFile.is_open() || !inputFile.good())
     {
         ALOGE("AAudioPlayer error opening file\n");
         return false;
@@ -131,11 +134,10 @@ bool AAudioPlayer::startAAudioPlayback()
 
     // skip wav header
 #ifdef USE_WAV_HEADER
-    m_inputFile.seekg(sizeof(WAVHeader), std::ios::beg);
+    inputFile.seekg(sizeof(WAVHeader), std::ios::beg);
 #endif
 
     AAudioStreamBuilder *builder{nullptr};
-    // Use an AAudioStreamBuilder to contain requested parameters.
     aaudio_result_t result = AAudio_createStreamBuilder(&builder);
     if (result != AAUDIO_OK)
     {
@@ -157,7 +159,7 @@ bool AAudioPlayer::startAAudioPlayback()
     // AAudioStreamBuilder_setAllowedCapturePolicy(builder, AAUDIO_ALLOW_CAPTURE_BY_ALL);
     // AAudioStreamBuilder_setPrivacySensitive(builder, false);
 #ifdef ENABLE_CALLBACK
-    AAudioStreamBuilder_setDataCallback(builder, dataCallback, (void *)&m_inputFile);
+    AAudioStreamBuilder_setDataCallback(builder, dataCallback, (void *)m_sharedBuf);
     AAudioStreamBuilder_setErrorCallback(builder, errorCallback, nullptr);
 #endif
     ALOGI("set AAudio params: Usage:%d, SampleRate:%d, ChannelCount:%d, Format:%d\n", m_usage, m_sampleRate,
@@ -198,43 +200,64 @@ bool AAudioPlayer::startAAudioPlayback()
     aaudio_stream_state_t state = AAudioStream_getState(m_aaudioStream);
     ALOGI("after request start, state = %s\n", AAudio_convertStreamStateToText(state));
 
+#ifdef ENABLE_CALLBACK
+    m_sharedBuf->setBufSize(m_framesPerBurst * bytesPerFrame * 8);
+#endif
     m_isPlaying = true;
-    std::vector<char> dataBuf(actualBufferSize * bytesPerFrame);
+    char *bufWrite2File = new char[m_framesPerBurst * bytesPerFrame * 2];
     while (m_aaudioStream)
     {
+        inputFile.read(bufWrite2File, m_framesPerBurst * bytesPerFrame * 2);
+        if (inputFile.eof())
+            m_isPlaying = false;
+        int32_t bytes2Write = inputFile.gcount();
+        if (bytes2Write > 0)
+        {
 #ifdef ENABLE_CALLBACK
-        if (!m_inputFile.is_open())
-            m_isPlaying = false;
-        usleep(10 * 1000);
-#else
-        m_inputFile.read(dataBuf.data(), m_framesPerBurst * bytesPerFrame);
-        if (m_inputFile.eof())
-            m_isPlaying = false;
-        int32_t bytes2Write = m_inputFile.gcount();
-        int32_t framesPerWrite = m_framesPerBurst;
-        // Only complete frames will be written
-        if (bytes2Write != m_framesPerBurst * bytesPerFrame)
-        {
-            framesPerWrite = (int32_t)(bytes2Write / bytesPerFrame);
-            ALOGW("aaudio read file, framesPerBurst:%d, bytes2Write:%d, framesPerWrite:%d\n", m_framesPerBurst,
-                  bytes2Write, framesPerWrite);
-        }
-
-        int32_t framesWritten = 0;
-        while (framesWritten < framesPerWrite)
-        {
-            result = AAudioStream_write(m_aaudioStream, (char *)dataBuf.data() + framesWritten * bytesPerFrame, framesPerWrite - framesWritten, 40 * 1000 * 1000);
-            if (result < 0)
+            bool ret = false;
+            do
             {
-                ALOGE("AAudio write failed, result %d %s\n", result, AAudio_convertResultToText(result));
-                m_isPlaying = false;
-                break;
+                ret = m_sharedBuf->produce(bufWrite2File, bytes2Write);
+                usleep(10 * 1000);
+            } while (!ret);
+#else
+            int32_t framesPerWrite = m_framesPerBurst * 2;
+            // Only complete frames will be written
+            if (bytes2Write != m_framesPerBurst * bytesPerFrame * 2)
+            {
+                framesPerWrite = (int32_t)(bytes2Write / bytesPerFrame);
+                ALOGW("aaudio read file, framesPerBurst:%d, bytes2Write:%d, framesPerWrite:%d\n", m_framesPerBurst,
+                      bytes2Write, framesPerWrite);
             }
-            framesWritten += result;
-        }
+
+            int32_t framesWritten = 0;
+            while (framesWritten < framesPerWrite)
+            {
+                result = AAudioStream_write(m_aaudioStream, bufWrite2File + framesWritten * bytesPerFrame,
+                                            framesPerWrite - framesWritten, 40 * 1000 * 1000);
+                if (result < 0)
+                {
+                    ALOGE("AAudio write failed, result %d %s\n", result, AAudio_convertResultToText(result));
+                    m_isPlaying = false;
+                    break;
+                }
+                framesWritten += result;
+            }
 #endif
+        }
         if (!m_isPlaying)
+        {
             _stopPlayback();
+            if (inputFile.is_open())
+            {
+                inputFile.close();
+            }
+            if (bufWrite2File)
+            {
+                delete[] bufWrite2File;
+                bufWrite2File = nullptr;
+            }
+        }
     }
     return true;
 }
@@ -275,8 +298,6 @@ void AAudioPlayer::_stopPlayback()
         AAudioStream_close(m_aaudioStream);
         m_aaudioStream = nullptr;
     }
-    if (m_inputFile.is_open())
-        m_inputFile.close();
 }
 
 #ifdef ENABLE_CALLBACK
@@ -285,56 +306,42 @@ AAudioPlayer::dataCallback(AAudioStream *stream, void *userData, void *audioData
 {
     if (numFrames > 0)
     {
+        bool ret = false;
         int32_t channels = AAudioStream_getChannelCount(stream);
         int32_t bytesPerFrame = _getBytesPerSample(AAudioStream_getFormat(stream)) * channels;
-        if (((std::ifstream *)userData)->is_open())
-        {
+        // ALOGD("aaudio dataCallback, request numFrames:%d, bytesPerFrame:%d\n", numFrames, bytesPerFrame);
 #ifdef LATENCY_TEST
-            if (s_cycle == WRITE_CYCLE)
-            {
-                s_invert_flag = 1;
-            }
-            if (s_cycle == 2 * WRITE_CYCLE)
-            {
-                s_cycle = 0;
-                s_invert_flag = 0;
-            }
-            if (s_invert_flag == 1)
-            {
-                memset(audioData, 0, numFrames * bytesPerFrame);
-                gpio_set_low();
-            }
-            else
-            {
-                ((std::ifstream *)userData)->read(static_cast<char *>(audioData), numFrames * bytesPerFrame);
-                gpio_set_high();
-                int32_t bytesRead = ((std::ifstream *)userData)->gcount();
-                ALOGD("aaudio dataCallback, request numFrames:%d, bytesRead:%d\n", numFrames, bytesRead);
-                if (((std::ifstream *)userData)->eof())
-                {
-                    ALOGI("aaudio read data file end\n");
-                    ((std::ifstream *)userData)->close();
-                    return AAUDIO_CALLBACK_RESULT_STOP;
-                }
-            }
-            s_cycle++;
-#else
-            ((std::ifstream *)userData)->read(static_cast<char *>(audioData), numFrames * bytesPerFrame);
-            // int32_t bytesRead = ((std::ifstream *)userData)->gcount();
-            // ALOGD("aaudio dataCallback, request numFrames:%d, bytesRead:%d\n", numFrames, bytesRead);
-            if (((std::ifstream *)userData)->eof())
-            {
-                ALOGI("aaudio read data file end\n");
-                ((std::ifstream *)userData)->close();
-                return AAUDIO_CALLBACK_RESULT_STOP;
-            }
-#endif
+        if (s_cycle == WRITE_CYCLE)
+        {
+            s_invert_flag = 1;
+        }
+        if (s_cycle == 2 * WRITE_CYCLE)
+        {
+            s_cycle = 0;
+            s_invert_flag = 0;
+        }
+        if (s_invert_flag == 1)
+        {
+            memset(audioData, 0, numFrames * bytesPerFrame);
+            gpio_set_low();
         }
         else
         {
-            ALOGI("aaudio data file closed\n");
-            return AAUDIO_CALLBACK_RESULT_STOP;
+            ret = ((SharedBuffer *)userData)->consume((char *)audioData, numFrames * bytesPerFrame);
+            if (!ret)
+            {
+                ALOGE("can't read from buffer, buffer is empty\n");
+            }
+            gpio_set_high();
         }
+        s_cycle++;
+#else
+        ret = ((SharedBuffer *)userData)->consume((char *)audioData, numFrames * bytesPerFrame);
+        if (!ret)
+        {
+            ALOGE("can't read from buffer, buffer is empty\n");
+        }
+#endif
     }
     return AAUDIO_CALLBACK_RESULT_CONTINUE;
 }

@@ -6,6 +6,7 @@
 #define AAUDIOPLAYER_AAUDIO_PLAYER_H
 
 #include <aaudio/AAudio.h>
+#include "aaudio-buffer.h"
 
 #define ENABLE_CALLBACK // AAudio callback
 #define USE_WAV_HEADER
@@ -13,6 +14,13 @@
 
 class AAudioPlayer
 {
+public:
+    AAudioPlayer();
+    ~AAudioPlayer();
+
+    bool startAAudioPlayback();
+    bool stopAAudioPlayback();
+
 private:
     aaudio_usage_t m_usage;
     aaudio_content_type_t m_content;
@@ -28,21 +36,14 @@ private:
     bool m_isPlaying;
     AAudioStream *m_aaudioStream;
     std::string m_audioFile;
-    std::ifstream m_inputFile;
 
     void _stopPlayback();
     static int32_t _getBytesPerSample(aaudio_format_t format);
 
 #ifdef ENABLE_CALLBACK
+    SharedBuffer *m_sharedBuf;
     static aaudio_data_callback_result_t dataCallback(AAudioStream *stream, void *userData, void *audioData, int32_t numFrames);
     static void errorCallback(AAudioStream *stream, void *userData, aaudio_result_t error);
 #endif
-
-public:
-    AAudioPlayer();
-    ~AAudioPlayer();
-
-    bool startAAudioPlayback();
-    bool stopAAudioPlayback();
 };
 #endif // AAUDIOPLAYER_AAUDIO_PLAYER_H
