@@ -218,7 +218,7 @@ bool AAudioPlayer::startAAudioPlayback()
             do
             {
                 ret = m_sharedBuf->produce(bufWrite2File, bytes2Write);
-                usleep(10 * 1000);
+                usleep(8 * 1000);
             } while (!ret);
 #else
             int32_t framesPerWrite = m_framesPerBurst * 2;
