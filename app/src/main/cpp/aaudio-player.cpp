@@ -131,10 +131,8 @@ bool AAudioPlayer::startAAudioPlayback()
         ALOGE("AAudioPlayer error opening file\n");
         return false;
     }
-
-    // skip wav header
 #ifdef USE_WAV_HEADER
-    inputFile.seekg(sizeof(WAVHeader), std::ios::beg);
+    inputFile.seekg(sizeof(WAVHeader), std::ios::beg); // skip wav header
 #endif
 
     AAudioStreamBuilder *builder{nullptr};
@@ -200,10 +198,10 @@ bool AAudioPlayer::startAAudioPlayback()
     aaudio_stream_state_t state = AAudioStream_getState(m_aaudioStream);
     ALOGI("after request start, state = %s\n", AAudio_convertStreamStateToText(state));
 
+    m_isPlaying = true;
 #ifdef ENABLE_CALLBACK
     m_sharedBuf->setBufSize(m_framesPerBurst * bytesPerFrame * 8);
 #endif
-    m_isPlaying = true;
     char *bufWrite2File = new char[m_framesPerBurst * bytesPerFrame * 2];
     while (m_aaudioStream)
     {
