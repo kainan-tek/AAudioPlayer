@@ -3,10 +3,9 @@
 #include <iostream>
 #include <fstream>
 #include <thread>
-#include <unistd.h>
 #include <vector>
 #include <fcntl.h>
-#include <aaudio/AAudio.h>
+#include <unistd.h>
 #include "common.h"
 #include "aaudio-player.h"
 #include "wav-header.h"
@@ -47,6 +46,12 @@ void gpio_set_low()
         ALOGE("failed to open gpio file");
     }
 }
+#endif
+
+int32_t getBytesPerSample(aaudio_format_t format);
+#ifdef ENABLE_CALLBACK
+aaudio_data_callback_result_t dataCallback(AAudioStream *stream, void *userData, void *audioData, int32_t numFrames);
+void errorCallback(AAudioStream *stream, void *userData, aaudio_result_t result);
 #endif
 
 AAudioPlayer::AAudioPlayer() : m_usage(AAUDIO_USAGE_MEDIA),
@@ -182,7 +187,7 @@ bool AAudioPlayer::startAAudioPlayback()
           "framesPerBurst:%d\n",
           actualSampleRate, actualChannelCount, actualDataFormat, actualBufferSize, m_framesPerBurst);
 
-    int32_t bytesPerFrame = _getBytesPerSample(actualDataFormat) * actualChannelCount;
+    int32_t bytesPerFrame = getBytesPerSample(actualDataFormat) * actualChannelCount;
     // request start
     result = AAudioStream_requestStart(m_aaudioStream);
     if (result != AAUDIO_OK)
@@ -298,15 +303,30 @@ void AAudioPlayer::_stopPlayback()
     }
 }
 
+int32_t getBytesPerSample(aaudio_format_t format)
+{
+    switch (format)
+    {
+    case AAUDIO_FORMAT_PCM_I16:
+        return 2;
+    case AAUDIO_FORMAT_PCM_I24_PACKED:
+        return 3;
+    case AAUDIO_FORMAT_PCM_I32:
+    case AAUDIO_FORMAT_PCM_FLOAT:
+        return 4;
+    default:
+        return 2;
+    }
+}
+
 #ifdef ENABLE_CALLBACK
-aaudio_data_callback_result_t
-AAudioPlayer::dataCallback(AAudioStream *stream, void *userData, void *audioData, int32_t numFrames)
+aaudio_data_callback_result_t dataCallback(AAudioStream *stream, void *userData, void *audioData, int32_t numFrames)
 {
     if (numFrames > 0)
     {
         bool ret = false;
         int32_t channels = AAudioStream_getChannelCount(stream);
-        int32_t bytesPerFrame = _getBytesPerSample(AAudioStream_getFormat(stream)) * channels;
+        int32_t bytesPerFrame = getBytesPerSample(AAudioStream_getFormat(stream)) * channels;
         // ALOGD("aaudio dataCallback, request numFrames:%d, bytesPerFrame:%d\n", numFrames, bytesPerFrame);
 #ifdef LATENCY_TEST
         if (s_cycle == WRITE_CYCLE)
@@ -344,27 +364,11 @@ AAudioPlayer::dataCallback(AAudioStream *stream, void *userData, void *audioData
     return AAUDIO_CALLBACK_RESULT_CONTINUE;
 }
 
-void AAudioPlayer::errorCallback(AAudioStream *stream, void *userData, aaudio_result_t error)
+void errorCallback(AAudioStream *stream, void *userData, aaudio_result_t result)
 {
-    ALOGI("errorCallback\n");
+    ALOGE("AAudio errorCallback, result: %d %s\n", result, AAudio_convertResultToText(result));
 }
 #endif
-
-int32_t AAudioPlayer::_getBytesPerSample(aaudio_format_t format)
-{
-    switch (format)
-    {
-    case AAUDIO_FORMAT_PCM_I16:
-        return 2;
-    case AAUDIO_FORMAT_PCM_I24_PACKED:
-        return 3;
-    case AAUDIO_FORMAT_PCM_I32:
-    case AAUDIO_FORMAT_PCM_FLOAT:
-        return 4;
-    default:
-        return 2;
-    }
-}
 
 AAudioPlayer *AAPlayer{nullptr};
 extern "C" JNIEXPORT void JNICALL

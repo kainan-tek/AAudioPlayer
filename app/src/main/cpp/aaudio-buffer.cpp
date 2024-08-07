@@ -2,6 +2,7 @@
 // Created by kaina on 2024/8/2.
 //
 
+#include <cstring>
 #include "aaudio-buffer.h"
 
 SharedBuffer::SharedBuffer(size_t size) : m_buffer(size), m_write_ptr(0), m_read_ptr(0), m_count(0) {}

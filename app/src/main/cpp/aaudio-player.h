@@ -8,9 +8,9 @@
 #include <aaudio/AAudio.h>
 #include "aaudio-buffer.h"
 
-#define ENABLE_CALLBACK // AAudio callback
+#define ENABLE_CALLBACK
 #define USE_WAV_HEADER
-// #define LATENCY_TEST     // latency test with gpio
+// #define LATENCY_TEST
 
 class AAudioPlayer
 {
@@ -36,14 +36,10 @@ private:
     bool m_isPlaying;
     AAudioStream *m_aaudioStream;
     std::string m_audioFile;
-
-    void _stopPlayback();
-    static int32_t _getBytesPerSample(aaudio_format_t format);
-
 #ifdef ENABLE_CALLBACK
     SharedBuffer *m_sharedBuf;
-    static aaudio_data_callback_result_t dataCallback(AAudioStream *stream, void *userData, void *audioData, int32_t numFrames);
-    static void errorCallback(AAudioStream *stream, void *userData, aaudio_result_t error);
 #endif
+
+    void _stopPlayback();
 };
 #endif // AAUDIOPLAYER_AAUDIO_PLAYER_H
