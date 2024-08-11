@@ -207,10 +207,10 @@ bool AAudioPlayer::startAAudioPlayback()
 #ifdef ENABLE_CALLBACK
     m_sharedBuf->setBufSize(m_framesPerBurst * bytesPerFrame * 8);
 #endif
-    char *bufWrite2File = new char[m_framesPerBurst * bytesPerFrame * 2];
+    char *bufReadFromFile = new char[m_framesPerBurst * bytesPerFrame * 2];
     while (m_aaudioStream)
     {
-        inputFile.read(bufWrite2File, m_framesPerBurst * bytesPerFrame * 2);
+        inputFile.read(bufReadFromFile, m_framesPerBurst * bytesPerFrame * 2);
         if (inputFile.eof())
             m_isPlaying = false;
         int32_t bytes2Write = inputFile.gcount();
@@ -220,7 +220,7 @@ bool AAudioPlayer::startAAudioPlayback()
             bool ret = false;
             do
             {
-                ret = m_sharedBuf->produce(bufWrite2File, bytes2Write);
+                ret = m_sharedBuf->produce(bufReadFromFile, bytes2Write);
                 usleep(8 * 1000);
             } while (!ret);
 #else
@@ -236,7 +236,7 @@ bool AAudioPlayer::startAAudioPlayback()
             int32_t framesWritten = 0;
             while (framesWritten < framesPerWrite)
             {
-                result = AAudioStream_write(m_aaudioStream, bufWrite2File + framesWritten * bytesPerFrame,
+                result = AAudioStream_write(m_aaudioStream, bufReadFromFile + framesWritten * bytesPerFrame,
                                             framesPerWrite - framesWritten, 40 * 1000 * 1000);
                 if (result < 0)
                 {
@@ -255,10 +255,10 @@ bool AAudioPlayer::startAAudioPlayback()
             {
                 inputFile.close();
             }
-            if (bufWrite2File)
+            if (bufReadFromFile)
             {
-                delete[] bufWrite2File;
-                bufWrite2File = nullptr;
+                delete[] bufReadFromFile;
+                bufReadFromFile = nullptr;
             }
         }
     }

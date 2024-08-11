@@ -15,7 +15,8 @@ void SharedBuffer::setBufSize(size_t bSize)
 
 bool SharedBuffer::produce(const char *data, size_t size)
 {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    // std::unique_lock<std::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     if (m_count + size > m_buffer.size())
     {
         return false; // not enough free buffer
@@ -38,7 +39,8 @@ bool SharedBuffer::produce(const char *data, size_t size)
 
 bool SharedBuffer::consume(char *data, size_t size)
 {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    // std::unique_lock<std::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     if (m_count < size)
     {
         return false; // not enough data
