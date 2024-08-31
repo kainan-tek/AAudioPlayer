@@ -5,58 +5,58 @@
 #include <cstring>
 #include "aaudio-buffer.h"
 
-SharedBuffer::SharedBuffer(size_t size) : m_buffer(size), m_write_ptr(0), m_read_ptr(0), m_count(0) {}
+SharedBuffer::SharedBuffer(size_t size) : mBuffer(size), mWritePtr(0), mReadPtr(0), mCount(0) {}
 SharedBuffer::~SharedBuffer() = default;
 
-void SharedBuffer::setBufSize(size_t bSize)
+void SharedBuffer::setBufSize(size_t size)
 {
-    m_buffer.resize(bSize, 0);
+    mBuffer.resize(size, 0);
 }
 
 bool SharedBuffer::produce(const char *data, size_t size)
 {
-    // std::unique_lock<std::mutex> lock(m_mutex);
-    std::lock_guard<std::mutex> lock(m_mutex);
-    if (m_count + size > m_buffer.size())
+    // std::unique_lock<std::mutex> lock(mMutex);
+    std::lock_guard<std::mutex> lock(mMutex);
+    if (mCount + size > mBuffer.size())
     {
         return false; // not enough free buffer
     }
 
-    size_t first_part = std::min(size, m_buffer.size() - m_write_ptr);
-    memcpy(m_buffer.data() + m_write_ptr, data, first_part);
+    size_t firstPart = std::min(size, mBuffer.size() - mWritePtr);
+    memcpy(mBuffer.data() + mWritePtr, data, firstPart);
 
-    size_t second_part = size - first_part;
-    if (second_part > 0)
+    size_t secondPart = size - firstPart;
+    if (secondPart > 0)
     {
-        memcpy(m_buffer.data(), data + first_part, second_part);
+        memcpy(mBuffer.data(), data + firstPart, secondPart);
     }
 
-    m_write_ptr = (m_write_ptr + size) % m_buffer.size();
-    m_count += size;
+    mWritePtr = (mWritePtr + size) % mBuffer.size();
+    mCount += size;
 
     return true;
 }
 
 bool SharedBuffer::consume(char *data, size_t size)
 {
-    // std::unique_lock<std::mutex> lock(m_mutex);
-    std::lock_guard<std::mutex> lock(m_mutex);
-    if (m_count < size)
+    // std::unique_lock<std::mutex> lock(mMutex);
+    std::lock_guard<std::mutex> lock(mMutex);
+    if (mCount < size)
     {
         return false; // not enough data
     }
 
-    size_t first_part = std::min(size, m_buffer.size() - m_read_ptr);
-    memcpy(data, m_buffer.data() + m_read_ptr, first_part);
+    size_t firstPart = std::min(size, mBuffer.size() - mReadPtr);
+    memcpy(data, mBuffer.data() + mReadPtr, firstPart);
 
-    size_t second_part = size - first_part;
-    if (second_part > 0)
+    size_t secondPart = size - firstPart;
+    if (secondPart > 0)
     {
-        memcpy(data + first_part, m_buffer.data(), second_part);
+        memcpy(data + firstPart, mBuffer.data(), secondPart);
     }
 
-    m_read_ptr = (m_read_ptr + size) % m_buffer.size();
-    m_count -= size;
+    mReadPtr = (mReadPtr + size) % mBuffer.size();
+    mCount -= size;
 
     return true;
 }
@@ -64,33 +64,33 @@ bool SharedBuffer::consume(char *data, size_t size)
 /*
 bool SharedBuffer::produce(const char *data, size_t size)
 {
-    std::unique_lock<std::mutex> lock(m_mutex);
-    if (m_count + size > m_buffer.size())
+    std::unique_lock<std::mutex> lock(mMutex);
+    if (mCount + size > mBuffer.size())
     {
         return false; // no enough free buffer
     }
     for (size_t i = 0; i < size; i++)
     {
-        m_buffer[m_write_ptr] = data[i];
-        m_write_ptr = (m_write_ptr + 1) % m_buffer.size();
+        mBuffer[mWritePtr] = data[i];
+        mWritePtr = (mWritePtr + 1) % mBuffer.size();
     }
-    m_count += size;
+    mCount += size;
     return true;
 }
 
 bool SharedBuffer::consume(char *data, size_t size)
 {
-    std::unique_lock<std::mutex> lock(m_mutex);
-    if (m_count < size)
+    std::unique_lock<std::mutex> lock(mMutex);
+    if (mCount < size)
     {
         return false; // no enough data
     }
     for (size_t i = 0; i < size; i++)
     {
-        data[i] = m_buffer[m_read_ptr];
-        m_read_ptr = (m_read_ptr + 1) % m_buffer.size();
+        data[i] = mBuffer[mReadPtr];
+        mReadPtr = (mReadPtr + 1) % mBuffer.size();
     }
-    m_count -= size;
+    mCount -= size;
     return true;
 }
 */

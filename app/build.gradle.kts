@@ -10,7 +10,7 @@ android {
     defaultConfig {
         applicationId = "com.example.aaudioplayer"
         minSdk = 31
-        this.targetSdk = 34
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 

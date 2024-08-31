@@ -22,24 +22,24 @@ public:
     bool stopAAudioPlayback();
 
 private:
-    aaudio_usage_t m_usage;
-    aaudio_content_type_t m_content;
-    int32_t m_sampleRate;
-    int32_t m_channelCount;
-    aaudio_format_t m_format;
-    int32_t m_framesPerBurst;
-    int32_t m_numOfBursts;
-    aaudio_direction_t m_direction;
-    aaudio_sharing_mode_t m_sharingMode;
-    aaudio_performance_mode_t m_performanceMode;
+    aaudio_usage_t mUsage;
+    aaudio_content_type_t mContent;
+    int32_t mSampleRate;
+    int32_t mChannelCount;
+    aaudio_format_t mFormat;
+    int32_t mFramesPerBurst;
+    int32_t mNumOfBursts;
+    aaudio_direction_t mDirection;
+    aaudio_sharing_mode_t mSharingMode;
+    aaudio_performance_mode_t mPerformanceMode;
 
-    bool m_isPlaying;
-    AAudioStream *m_aaudioStream;
-    std::string m_audioFile;
+    bool mIsPlaying;
+    AAudioStream *mAAudioStream;
+    const std::string mAudioFile;
 #ifdef ENABLE_CALLBACK
-    SharedBuffer *m_sharedBuf;
+    SharedBuffer *mSharedBuf;
 #endif
 
-    void _stopPlayback();
+    void stopPlayback();
 };
 #endif // AAUDIOPLAYER_AAUDIO_PLAYER_H
