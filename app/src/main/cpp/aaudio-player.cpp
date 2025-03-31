@@ -90,6 +90,9 @@ AAudioPlayer::~AAudioPlayer()
 
 bool AAudioPlayer::startAAudioPlayback()
 {
+    char *bufReadFromFile = nullptr;
+    aaudio_stream_state_t state = AAUDIO_STREAM_STATE_UNINITIALIZED;
+
 #ifdef LATENCY_TEST
     s_cycle = 0;
     s_invert_flag = 0;
@@ -202,23 +205,24 @@ bool AAudioPlayer::startAAudioPlayback()
     if (result != AAUDIO_OK)
     {
         ALOGE("AAudioStream_requestStart returned %d %s\n", result, AAudio_convertResultToText(result));
-        if (mAAudioStream != nullptr)
-        {
-            AAudioStream_close(mAAudioStream);
-            mAAudioStream = nullptr;
-        }
-        return false;
+        goto exit_label;
     }
-    aaudio_stream_state_t state = AAudioStream_getState(mAAudioStream);
+    state = AAudioStream_getState(mAAudioStream);
     ALOGI("after request start, state = %s\n", AAudio_convertStreamStateToText(state));
 
-    mIsPlaying = true;
 #ifdef ENABLE_CALLBACK
     mSharedBuf->setBufSize(mFramesPerBurst * bytesPerFrame * 8);
 #endif
-    char *bufReadFromFile = new char[mFramesPerBurst * bytesPerFrame * 2];
+    bufReadFromFile = new (std::nothrow) char[mFramesPerBurst * bytesPerFrame * 2];
+    if (!bufReadFromFile)
+    {
+        ALOGE("AAudio new bufReadFromFile failed\n");
+        goto exit_label;
+    }
+    mIsPlaying = true;
     while (mAAudioStream)
     {
+        // memset(bufReadFromFile,0,mFramesPerBurst * bytesPerFrame * 2);
         inputFile.read(bufReadFromFile, mFramesPerBurst * bytesPerFrame * 2);
         if (inputFile.eof())
             mIsPlaying = false;
@@ -242,35 +246,36 @@ bool AAudioPlayer::startAAudioPlayback()
                       bytes2Write, framesPerWrite);
             }
 
-            int32_t framesWritten = 0;
-            while (framesWritten < framesPerWrite)
+            // block write as timeoutNanoseconds is not zero
+            int32_t rst = AAudioStream_write(mAAudioStream, bufReadFromFile, framesPerWrite, 80 * 1000 * 1000);
+            if (rst < 0)
             {
-                result = AAudioStream_write(mAAudioStream, bufReadFromFile + framesWritten * bytesPerFrame,
-                                            framesPerWrite - framesWritten, 40 * 1000 * 1000);
-                if (result < 0)
-                {
-                    ALOGE("AAudio write failed, result %d %s\n", result, AAudio_convertResultToText(result));
-                    mIsPlaying = false;
-                    break;
-                }
-                framesWritten += result;
+                ALOGE("AAudio write failed, rst %d %s\n", rst, AAudio_convertResultToText(rst));
+                mIsPlaying = false;
             }
+            if (rst != framesPerWrite)
+                ALOGD("AAudio actually write frames %d, should write frames %d\n", rst, framesPerWrite);
 #endif
         }
         if (!mIsPlaying)
         {
             stopPlayback();
-            if (inputFile.is_open())
-            {
-                inputFile.close();
-            }
-            if (bufReadFromFile)
-            {
-                delete[] bufReadFromFile;
-                bufReadFromFile = nullptr;
-            }
+            goto exit_label;
         }
     }
+
+exit_label:
+    if (mAAudioStream != nullptr)
+    {
+        AAudioStream_close(mAAudioStream);
+        mAAudioStream = nullptr;
+    }
+    if (inputFile.is_open())
+    {
+        inputFile.close();
+    }
+    delete[] bufReadFromFile;
+
     return true;
 }
 
@@ -385,8 +390,7 @@ void errorCallback([[maybe_unused]] AAudioStream *stream, [[maybe_unused]] void 
 
 AAudioPlayer *AAPlayer{nullptr};
 extern "C" JNIEXPORT void JNICALL
-Java_com_example_aaudioplayer_MainActivity_startAAudioPlaybackFromJNI([[maybe_unused]] JNIEnv *env,
-                                                                      [[maybe_unused]] jobject thiz)
+Java_com_example_aaudioplayer_MainActivity_startAAudioPlaybackFromJNI([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz)
 {
     // TODO: implement startAAudioPlaybackFromJNI()
     AAPlayer = new AAudioPlayer();
@@ -394,8 +398,7 @@ Java_com_example_aaudioplayer_MainActivity_startAAudioPlaybackFromJNI([[maybe_un
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_example_aaudioplayer_MainActivity_stopAAudioPlaybackFromJNI([[maybe_unused]] JNIEnv *env,
-                                                                     [[maybe_unused]] jobject thiz)
+Java_com_example_aaudioplayer_MainActivity_stopAAudioPlaybackFromJNI([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz)
 {
     // TODO: implement stopAAudioPlaybackFromJNI()
     AAPlayer->stopAAudioPlayback();
