@@ -5,7 +5,6 @@ plugins {
 
 android {
     namespace = "com.example.aaudioplayer"
-    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.example.aaudioplayer"
@@ -26,11 +25,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = "17"
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
     externalNativeBuild {
         cmake {
@@ -41,8 +37,9 @@ android {
     buildFeatures {
         viewBinding = true
     }
+    compileSdk = 35
     ndkVersion = "27.0.12077973"
-    buildToolsVersion = "35.0.1"
+    buildToolsVersion = "36.0.0"
 }
 
 dependencies {

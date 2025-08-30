@@ -5,23 +5,22 @@
 #ifndef AAUDIOPLAYER_AAUDIO_PLAYER_H
 #define AAUDIOPLAYER_AAUDIO_PLAYER_H
 
-#include <aaudio/AAudio.h>
 #include "aaudio-buffer.h"
+#include <aaudio/AAudio.h>
 
 #define ENABLE_CALLBACK
 #define USE_WAV_HEADER
 // #define LATENCY_TEST
 
-class AAudioPlayer
-{
-public:
+class AAudioPlayer {
+  public:
     AAudioPlayer();
     ~AAudioPlayer();
 
     bool startAAudioPlayback();
     bool stopAAudioPlayback();
 
-private:
+  private:
     aaudio_usage_t mUsage;
     aaudio_content_type_t mContent;
     int32_t mSampleRate;

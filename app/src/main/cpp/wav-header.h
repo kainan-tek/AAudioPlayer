@@ -5,12 +5,12 @@
 #ifndef AAUDIOPLAYER_WAV_HEADER_H
 #define AAUDIOPLAYER_WAV_HEADER_H
 
-#include <string>
-#include <cstdint>
 #include "common.h"
+#include <cstdint>
+#include <fstream>
+#include <string>
 
-struct WAVHeader
-{
+struct WAVHeader {
     // WAV header size is 44 bytes
     // format = RIFF + fmt + data
     char riffID[4];         // "RIFF"
@@ -34,8 +34,7 @@ struct WAVHeader
      *
      * @throws None
      */
-    void write(std::ofstream &out)
-    {
+    void write(std::ofstream &out) {
         out.write(riffID, 4);                 // "RIFF"
         out.write((char *)&riffSize, 4);      // 36 + (numSamples * numChannels * bytesPerSample)
         out.write(waveID, 4);                 // "WAVE"
@@ -58,8 +57,7 @@ struct WAVHeader
      *
      * @throws None
      */
-    void read(std::ifstream &in)
-    {
+    void read(std::ifstream &in) {
         in.read(riffID, 4);                 // "RIFF"
         in.read((char *)&riffSize, 4);      // 36 + (numSamples * numChannels * bytesPerSample)
         in.read(waveID, 4);                 // "WAVE"
@@ -76,8 +74,7 @@ struct WAVHeader
     }
 
     /** Prints the WAV file header. */
-    [[maybe_unused]] void print()
-    {
+    [[maybe_unused]] void print() {
         ALOGI("RiffID: %s\n", riffID);
         ALOGI("RiffSize: %d\n", riffSize);
         ALOGI("WaveID: %s\n", waveID);
@@ -96,7 +93,8 @@ struct WAVHeader
 
 bool readWAVHeader(const std::string &filename, WAVHeader &header);
 
-[[maybe_unused]] bool writeWAVHeader(std::ofstream &outFile, uint32_t numSamples, uint32_t sampleRate, uint32_t numChannels, uint32_t bitsPerSample);
+[[maybe_unused]] bool writeWAVHeader(std::ofstream &outFile, uint32_t numSamples, uint32_t sampleRate,
+                                     uint32_t numChannels, uint32_t bitsPerSample);
 
 [[maybe_unused]] void UpdateSizes(std::ofstream &outfile, uint32_t data_chunk_size);
 

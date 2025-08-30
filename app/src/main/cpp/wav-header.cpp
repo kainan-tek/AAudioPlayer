@@ -2,9 +2,9 @@
 // Created by kaina on 2024/7/7.
 //
 
+#include "wav-header.h"
 #include <cstdint>
 #include <fstream>
-#include "wav-header.h"
 
 /**
  * Writes the WAV file header to the specified output stream.
@@ -17,10 +17,9 @@
  *
  * @return True if the header was written successfully, false otherwise.
  */
-[[maybe_unused]] bool writeWAVHeader(std::ofstream &outFile, uint32_t numSamples, uint32_t sampleRate, uint32_t numChannels, uint32_t bitsPerSample)
-{
-    if (!outFile.is_open())
-    {
+[[maybe_unused]] bool writeWAVHeader(std::ofstream &outFile, uint32_t numSamples, uint32_t sampleRate,
+                                     uint32_t numChannels, uint32_t bitsPerSample) {
+    if (!outFile.is_open()) {
         return false;
     }
 
@@ -69,16 +68,13 @@
  *
  * @return True if the header was read successfully, false otherwise.
  */
-bool readWAVHeader(const std::string &filename, WAVHeader &header)
-{
+bool readWAVHeader(const std::string &filename, WAVHeader &header) {
     std::ifstream in(filename, std::ios::binary | std::ios::in);
-    if (!in.is_open())
-    {
+    if (!in.is_open()) {
         return false;
     }
     header.read(in);
-    if (in.is_open())
-    {
+    if (in.is_open()) {
         in.close();
     }
     return true;
@@ -90,8 +86,7 @@ bool readWAVHeader(const std::string &filename, WAVHeader &header)
  * @param outfile The output stream to write the updated header to.
  * @param data_chunk_size The size of the data chunk in bytes.
  */
-[[maybe_unused]] void UpdateSizes(std::ofstream &outfile, uint32_t data_chunk_size)
-{
+[[maybe_unused]] void UpdateSizes(std::ofstream &outfile, uint32_t data_chunk_size) {
     // record current position
     std::streampos current_position = outfile.tellp();
 

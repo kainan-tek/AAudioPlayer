@@ -8,9 +8,8 @@
 #include <mutex>
 #include <vector>
 
-class SharedBuffer
-{
-public:
+class SharedBuffer {
+  public:
     explicit SharedBuffer(size_t size);
     ~SharedBuffer();
 
@@ -18,7 +17,7 @@ public:
     bool produce(const char *data, size_t size);
     bool consume(char *data, size_t size);
 
-private:
+  private:
     std::vector<char> mBuffer;
     size_t mWritePtr{};
     size_t mReadPtr{};
