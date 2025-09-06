@@ -26,11 +26,6 @@ static const aaudio_sharing_mode_t kSharingMode = AAUDIO_SHARING_MODE_SHARED; //
 static const aaudio_usage_t kAudioUsage = AAUDIO_USAGE_MEDIA;
 static const aaudio_content_type_t kContentType = AAUDIO_CONTENT_TYPE_MUSIC;
 
-// 日志辅助函数前向声明
-static void logDebug(const char* message, ...);
-static void logError(const char* message, ...);
-static void logWarning(const char* message, ...);
-
 // 全局变量
 static JavaVM* gJvm = nullptr;
 static jobject gPlaybackStateCallback = nullptr;
@@ -48,9 +43,7 @@ static aaudio_format_t gFormat = AAUDIO_FORMAT_PCM_I16; // 使用wav文件的格
 static int32_t gBytesPerSample = 2;                     // 根据gFormat计算获得
 
 // 直接写入模式相关变量
-#ifdef CALLBACK_MODE_ENABLE
-// 回调模式：保持原有实现
-#else
+#ifndef CALLBACK_MODE_ENABLE
 // 直接写入模式：播放线程变量
 static std::thread gPlaybackThread;
 static std::atomic<bool> gShouldStopThread(false);
@@ -60,6 +53,14 @@ static int32_t gFramesPerBurst = 0;                 // 每次写入的帧数，k
 static const int32_t kBufferCapacityMultiplier = 4; // 缓冲区容量是单次写入帧数的倍数
 static const int64_t kTimeoutNanos = kBufferDurationMs * kBufferCapacityMultiplier * 1000 * 1000; // 超时时间（纳秒）
 #endif // CALLBACK_MODE_ENABLE
+
+// 定义日志标签
+#define LOG_TAG "AAudioPlayer"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
+#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
+#define LOGV(...) __android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, __VA_ARGS__)
 
 #ifdef LATENCY_TEST_ENABLE
 // 延迟测试配置参数
@@ -75,16 +76,17 @@ static bool gLatencyTestInitialized = false; // 延迟测试初始化标志
 
 // 初始化延迟测试
 static void initializeLatencyTest() {
+    LOGD("Initializing latency test");
     gLatencyTestCycleCount = 0;
     gAudioMuteToggleFlag = false;
     gLatencyTestInitialized = true;
-    logDebug("Latency test initialized");
+    LOGD("Latency test initialized");
 }
 
 // 清理延迟测试资源
 __attribute__((unused)) static void cleanupLatencyTest() {
     gLatencyTestInitialized = false;
-    logDebug("Latency test resources cleaned up");
+    LOGD("Latency test resources cleaned up");
 }
 
 // 设置GPIO为高电平
@@ -93,11 +95,11 @@ static void setGpioHigh() {
     if (fd != -1) {
         ssize_t bytesWritten = write(fd, LATENCY_TEST_GPIO_ACTIVE_HIGH, strlen(LATENCY_TEST_GPIO_ACTIVE_HIGH));
         if (bytesWritten < 0) {
-            logError("Failed to write high value to GPIO file");
+            LOGE("Failed to write high value to GPIO file");
         }
         close(fd);
     } else {
-        logError("Failed to open GPIO file: %s, error: %d", LATENCY_TEST_GPIO_FILE, errno);
+        LOGE("Failed to open GPIO file: %s, error: %d", LATENCY_TEST_GPIO_FILE, errno);
     }
 }
 
@@ -107,11 +109,11 @@ static void setGpioLow() {
     if (fd != -1) {
         ssize_t bytesWritten = write(fd, LATENCY_TEST_GPIO_ACTIVE_LOW, strlen(LATENCY_TEST_GPIO_ACTIVE_LOW));
         if (bytesWritten < 0) {
-            logError("Failed to write low value to GPIO file");
+            LOGE("Failed to write low value to GPIO file");
         }
         close(fd);
     } else {
-        logError("Failed to open GPIO file: %s, error: %d", LATENCY_TEST_GPIO_FILE, errno);
+        LOGE("Failed to open GPIO file: %s, error: %d", LATENCY_TEST_GPIO_FILE, errno);
     }
 }
 
@@ -134,35 +136,13 @@ static void updateLatencyTestState() {
             setGpioHigh();
         }
 
-        logDebug("Latency test state toggled: cycle=%d, mute=%d", gLatencyTestCycleCount, gAudioMuteToggleFlag);
+        LOGD("Latency test state toggled: cycle=%d, mute=%d", gLatencyTestCycleCount, gAudioMuteToggleFlag);
     }
 }
 
 // 检查是否需要静音当前音频数据
 static bool shouldMuteAudio() { return gAudioMuteToggleFlag; }
 #endif // LATENCY_TEST_ENABLE
-
-// 日志辅助函数
-static void logDebug(const char* message, ...) {
-    va_list args;
-    va_start(args, message);
-    __android_log_vprint(ANDROID_LOG_DEBUG, "SimpleAAudio", message, args);
-    va_end(args);
-}
-
-static void logError(const char* message, ...) {
-    va_list args;
-    va_start(args, message);
-    __android_log_vprint(ANDROID_LOG_ERROR, "SimpleAAudio", message, args);
-    va_end(args);
-}
-
-static void logWarning(const char* message, ...) {
-    va_list args;
-    va_start(args, message);
-    __android_log_vprint(ANDROID_LOG_WARN, "SimpleAAudio", message, args);
-    va_end(args);
-}
 
 // 获取每个样本的字节数
 static int32_t getBytesPerSample(aaudio_format_t format) {
@@ -175,7 +155,7 @@ static int32_t getBytesPerSample(aaudio_format_t format) {
     case AAUDIO_FORMAT_PCM_FLOAT:
         return 4;
     default:
-        logError("Unknown audio format");
+        LOGE("Unknown audio format: %d", format);
         return 2;
     }
 }
@@ -184,9 +164,10 @@ static int32_t getBytesPerSample(aaudio_format_t format) {
 // 回调模式：使用AAudioStreamBuilder_setDataCallback
 static aaudio_data_callback_result_t
 dataCallback(AAudioStream* stream, void* userData, void* audioData, int32_t numFrames) {
+    // LOGV("dataCallback called with %d frames", numFrames);
     // 即使gIsPlaying为false，也应该继续处理直到流完全停止
     if (!gAudioFile.is_open()) {
-        logError("Audio file not open in callback");
+        LOGE("Audio file not open in callback");
         return AAUDIO_CALLBACK_RESULT_STOP;
     }
 
@@ -196,6 +177,7 @@ dataCallback(AAudioStream* stream, void* userData, void* audioData, int32_t numF
     // 如果不在播放状态，填充静音
     if (!gIsPlaying.load()) {
         memset(audioData, 0, totalBytes);
+        LOGV("Not playing, filling with silence");
         return AAUDIO_CALLBACK_RESULT_CONTINUE; // 继续返回直到流被正确停止
     }
 
@@ -206,6 +188,7 @@ dataCallback(AAudioStream* stream, void* userData, void* audioData, int32_t numF
 
     // 从文件读取数据到音频缓冲区
     gAudioFile.read(static_cast<char*>(audioData), totalBytes);
+    // LOGV("Read %lld bytes from audio file", (long long)gAudioFile.gcount());
 #ifdef LATENCY_TEST_ENABLE
     // 根据延迟测试标志决定是否静音音频
     if (shouldMuteAudio()) {
@@ -217,7 +200,7 @@ dataCallback(AAudioStream* stream, void* userData, void* audioData, int32_t numF
         // 文件读取完毕，填充静音
         memset(static_cast<char*>(audioData) + bytesRead, 0, totalBytes - bytesRead);
         gIsPlaying.store(false);
-        logDebug("Audio file playback completed");
+        LOGI("Audio file playback completed");
 
         // 通知Java层播放已停止
         JNIEnv* env = nullptr;
@@ -234,7 +217,7 @@ dataCallback(AAudioStream* stream, void* userData, void* audioData, int32_t numF
                 env->CallVoidMethod(callbackRef, gOnPlaybackStateChangedMethodId, JNI_FALSE);
                 if (env->ExceptionCheck()) {
                     env->ExceptionClear();
-                    logError("Exception occurred while calling playback state callback");
+                    LOGE("Exception occurred while calling playback state callback");
                 }
                 env->DeleteLocalRef(callbackRef);
             }
@@ -252,8 +235,9 @@ dataCallback(AAudioStream* stream, void* userData, void* audioData, int32_t numF
 #else
 // 直接写入模式：播放线程函数（使用AAudioStream_write）
 static void playbackThreadFunc() {
+    LOGD("Playback thread started");
     if (!gAudioStream || !gAudioFile.is_open()) {
-        logError("Audio stream or file not open in playback thread");
+        LOGE("Audio stream or file not open in playback thread");
         return;
     }
 
@@ -267,19 +251,21 @@ static void playbackThreadFunc() {
             std::lock_guard<std::mutex> lock(gAudioFileLock);
             gAudioFile.read(reinterpret_cast<char*>(buffer.data()), bufferSize);
             std::streamsize bytesRead = gAudioFile.gcount();
+            // LOGV("Read %lld bytes from audio file", (long long)bytesRead);
             if (bytesRead < bufferSize) {
                 // 文件读取完毕，填充静音
                 memset(buffer.data() + bytesRead, 0, bufferSize - bytesRead);
-                logDebug("Audio file playback completed in direct write mode");
+                LOGD("Audio file playback completed in direct write mode");
 
                 // 写入剩余数据
                 int32_t framesWritten = AAudioStream_write(gAudioStream, buffer.data(), gFramesPerBurst, kTimeoutNanos);
                 if (framesWritten < 0) {
-                    logError("Error writing to audio stream");
+                    LOGE("Error writing to audio stream");
                 }
 
                 gIsPlaying.store(false);
                 gShouldStopThread.store(true);
+                LOGD("Playback thread stopping");
 
                 // 通知Java层播放已停止
                 JNIEnv* env = nullptr;
@@ -296,7 +282,7 @@ static void playbackThreadFunc() {
                         env->CallVoidMethod(callbackRef, gOnPlaybackStateChangedMethodId, JNI_FALSE);
                         if (env->ExceptionCheck()) {
                             env->ExceptionClear();
-                            logError("Exception occurred while calling playback state callback");
+                            LOGE("Exception occurred while calling playback state callback");
                         }
                         env->DeleteLocalRef(callbackRef);
                     }
@@ -313,7 +299,7 @@ static void playbackThreadFunc() {
         // 写入音频数据
         int32_t framesWritten = AAudioStream_write(gAudioStream, buffer.data(), gFramesPerBurst, kTimeoutNanos);
         if (framesWritten < 0) {
-            logError("Error writing to audio stream");
+            LOGE("Error writing to audio stream");
             gIsPlaying.store(false);
             gShouldStopThread.store(true);
             break;
@@ -324,22 +310,23 @@ static void playbackThreadFunc() {
 
 // 打开音频文件并读取格式信息
 static bool openAudioFile() {
+    LOGD("Opening audio file: %s", gAudioFilePath.c_str());
     // 确保之前的文件已关闭
     if (gAudioFile.is_open()) {
         gAudioFile.close();
-        logDebug("Audio file already open, closing first");
+        LOGV("Audio file already open, closing first");
     }
 
     // 尝试打开文件
     gAudioFile.open(gAudioFilePath, std::ios::binary);
     if (!gAudioFile.is_open()) {
-        logError("Failed to open audio file: %s", gAudioFilePath.c_str());
+        LOGE("Failed to open audio file: %s", gAudioFilePath.c_str());
         return false;
     }
 
     // 检查文件是否可读
     if (!gAudioFile.good()) {
-        logError("Audio file is not readable");
+        LOGE("Audio file is not readable");
         gAudioFile.close();
         return false;
     }
@@ -350,14 +337,14 @@ static bool openAudioFile() {
 
     // 检查是否读取了完整的头部
     if (!gAudioFile || gAudioFile.gcount() < 44) {
-        logError("Failed to read WAV file header");
+        LOGE("Failed to read WAV file header");
         gAudioFile.close();
         return false;
     }
 
     // 检查是否为WAV文件
     if (header[0] != 'R' || header[1] != 'I' || header[2] != 'F' || header[3] != 'F') {
-        logError("Not a valid WAV file");
+        LOGE("Not a valid WAV file");
         gAudioFile.close();
         return false;
     }
@@ -368,7 +355,7 @@ static bool openAudioFile() {
 
     // 验证采样率和通道数是否有效
     if (gSampleRate <= 0 || gChannelCount <= 0) {
-        logError("Invalid WAV file format: sampleRate=%d, channels=%d", gSampleRate, gChannelCount);
+        LOGE("Invalid WAV file format: sampleRate=%d, channels=%d", gSampleRate, gChannelCount);
         gAudioFile.close();
         return false;
     }
@@ -377,11 +364,11 @@ static bool openAudioFile() {
 #ifndef CALLBACK_MODE_ENABLE
     gFramesPerBurst = kBufferDurationMs * gSampleRate / 1000;
     if (gFramesPerBurst <= 0) {
-        logError("Invalid buffer size calculated");
+        LOGE("Invalid buffer size calculated");
         gAudioFile.close();
         return false;
     }
-    logDebug("Calculated frames per burst: %d", gFramesPerBurst);
+    LOGD("Calculated frames per burst: %d", gFramesPerBurst);
 #endif
 
     // 读取位深度并设置格式
@@ -393,7 +380,7 @@ static bool openAudioFile() {
     } else if (bitsPerSample == 32) {
         gFormat = AAUDIO_FORMAT_PCM_I32;
     } else {
-        logWarning("Unsupported bit depth: %d, using 16-bit instead", bitsPerSample);
+        LOGW("Unsupported bit depth: %d, using 16-bit instead", bitsPerSample);
         gFormat = AAUDIO_FORMAT_PCM_I16;
     }
 
@@ -402,22 +389,23 @@ static bool openAudioFile() {
     // 移动到数据部分
     gAudioFile.seekg(44);
     if (!gAudioFile.good()) {
-        logError("Failed to seek to audio data section");
+        LOGE("Failed to seek to audio data section");
         gAudioFile.close();
         return false;
     }
 
-    logDebug("Successfully opened audio file with sample rate: %d, channels: %d, format: %d", gSampleRate,
-             gChannelCount, gFormat);
+    LOGI("Successfully opened audio file with sample rate: %d, channels: %d, format: %d", gSampleRate, gChannelCount,
+         gFormat);
     return true;
 }
 
 // 创建并配置AAudio流
 static bool createAudioStream() {
+    LOGD("Creating audio stream");
     AAudioStreamBuilder* builder = nullptr;
     aaudio_result_t result = AAudio_createStreamBuilder(&builder);
     if (result != AAUDIO_OK) {
-        logError("Failed to create stream builder: %d", result);
+        LOGE("Failed to create stream builder: %d", result);
         return false;
     }
 
@@ -439,14 +427,15 @@ static bool createAudioStream() {
     // 直接写入模式：不设置回调函数，使用AAudioStream_write
     // AAudioStream_write的最后一个参数为0表示非阻塞模式
     AAudioStreamBuilder_setBufferCapacityInFrames(builder, gFramesPerBurst * kBufferCapacityMultiplier);
-    logDebug("Buffer capacity set to %d frames", gFramesPerBurst * kBufferCapacityMultiplier);
+    LOGD("Buffer capacity set to %d frames", gFramesPerBurst * kBufferCapacityMultiplier);
 #endif
 
     // 打开流
     result = AAudioStreamBuilder_openStream(builder, &gAudioStream);
     AAudioStreamBuilder_delete(builder);
+    LOGV("Stream builder deleted");
     if (result != AAUDIO_OK) {
-        logError("Failed to open audio stream: %d", result);
+        LOGE("Failed to open audio stream: %d", result);
         gAudioStream = nullptr;
         return false;
     }
@@ -455,8 +444,8 @@ static bool createAudioStream() {
     int32_t actualSampleRate = AAudioStream_getSampleRate(gAudioStream);
     int32_t actualChannelCount = AAudioStream_getChannelCount(gAudioStream);
     aaudio_format_t actualFormat = AAudioStream_getFormat(gAudioStream);
-    logDebug("Stream opened with sample rate: %d, channels: %d, format: %d", actualSampleRate, actualChannelCount,
-             actualFormat);
+    LOGI("Stream opened with sample rate: %d (requested: %d), channels: %d (requested: %d), format: %d (requested: %d)",
+         actualSampleRate, gSampleRate, actualChannelCount, gChannelCount, actualFormat, gFormat);
 
     return true;
 }
@@ -465,7 +454,7 @@ static bool createAudioStream() {
 static bool startPlayback() {
     std::lock_guard<std::mutex> lock(gLock);
 
-    logDebug("Starting playback");
+    LOGI("Starting playback");
 
 #ifdef LATENCY_TEST_ENABLE
     // 初始化延迟测试状态
@@ -477,12 +466,12 @@ static bool startPlayback() {
         AAudioStream_requestStop(gAudioStream);
         AAudioStream_close(gAudioStream);
         gAudioStream = nullptr;
-        logDebug("Previous audio stream closed");
+        LOGV("Previous audio stream closed");
     }
 
     if (gAudioFile.is_open()) {
         gAudioFile.close();
-        logDebug("Previous audio file closed");
+        LOGV("Previous audio file closed");
     }
 
 #ifndef CALLBACK_MODE_ENABLE
@@ -490,25 +479,25 @@ static bool startPlayback() {
     if (gPlaybackThread.joinable()) {
         gShouldStopThread.store(true);
         gPlaybackThread.join();
-        logDebug("Previous playback thread joined");
+        LOGV("Previous playback thread joined");
     }
     gShouldStopThread.store(false);
 #endif
 
     // 在打开资源前就设置播放状态为true，避免回调问题
     gIsPlaying.store(true);
-    logDebug("Set playback state to true");
+    LOGV("Set playback state to true");
 
     // 打开音频文件
     if (!openAudioFile()) {
-        logError("Failed to open audio file");
+        LOGE("Failed to open audio file");
         gIsPlaying.store(false);
         return false;
     }
 
     // 创建AAudio流
     if (!createAudioStream()) {
-        logError("Failed to create audio stream");
+        LOGE("Failed to create audio stream");
         gAudioFile.close();
         gIsPlaying.store(false);
         return false;
@@ -517,22 +506,22 @@ static bool startPlayback() {
     // 启动流
     aaudio_result_t result = AAudioStream_requestStart(gAudioStream);
     if (result != AAUDIO_OK) {
-        logError("Failed to start audio stream: %d", result);
+        LOGE("Failed to start audio stream: %d", result);
         AAudioStream_close(gAudioStream);
         gAudioStream = nullptr;
         gAudioFile.close();
         gIsPlaying.store(false);
         return false;
     }
-    logDebug("Audio stream started successfully");
+    LOGI("Audio stream started successfully");
 
 #ifndef CALLBACK_MODE_ENABLE
     // 直接写入模式：启动播放线程
     gPlaybackThread = std::thread(playbackThreadFunc);
-    logDebug("Playback thread started");
+    LOGD("Playback thread started");
 #endif
 
-    logDebug("Playback started successfully");
+    LOGI("Playback started successfully");
     return true;
 }
 
@@ -540,7 +529,7 @@ static bool startPlayback() {
 static bool stopPlayback() {
     std::lock_guard<std::mutex> lock(gLock);
 
-    logDebug("Stopping playback");
+    LOGI("Stopping playback");
 
     // 先设置状态为停止
     gIsPlaying.store(false);
@@ -551,9 +540,9 @@ static bool stopPlayback() {
     if (gPlaybackThread.joinable()) {
         try {
             gPlaybackThread.join();
-            logDebug("Playback thread joined");
+            LOGV("Playback thread joined");
         } catch (const std::system_error& e) {
-            logError("Error joining playback thread: %s", e.what());
+            LOGE("Error joining playback thread: %s", e.what());
         }
     }
 #endif
@@ -562,20 +551,20 @@ static bool stopPlayback() {
     if (gAudioStream) {
         aaudio_result_t result = AAudioStream_requestStop(gAudioStream);
         if (result != AAUDIO_OK) {
-            logError("Failed to request stop audio stream: %d", result);
+            LOGE("Failed to request stop audio stream: %d", result);
         }
 
         result = AAudioStream_close(gAudioStream);
         if (result != AAUDIO_OK) {
-            logError("Failed to close audio stream: %d", result);
+            LOGE("Failed to close audio stream: %d", result);
         }
         gAudioStream = nullptr;
-        logDebug("Audio stream closed");
+        LOGV("Audio stream closed");
     }
 
     if (gAudioFile.is_open()) {
         gAudioFile.close();
-        logDebug("Audio file closed");
+        LOGV("Audio file closed");
     }
 
     return true;
@@ -584,13 +573,19 @@ static bool stopPlayback() {
 // JNI方法 - 开始播放
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_example_aaudioplayer_SimpleAudioPlayer_startPlaybackNative(JNIEnv* env, jobject thiz) {
-    return startPlayback() ? JNI_TRUE : JNI_FALSE;
+    LOGD("JNI: startPlaybackNative called");
+    jboolean result = startPlayback() ? JNI_TRUE : JNI_FALSE;
+    LOGD("JNI: startPlaybackNative returned %s", result == JNI_TRUE ? "true" : "false");
+    return result;
 }
 
 // JNI方法 - 停止播放
 extern "C" JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_SimpleAudioPlayer_stopPlaybackNative(JNIEnv* env,
                                                                                                          jobject thiz) {
-    return stopPlayback() ? JNI_TRUE : JNI_FALSE;
+    LOGD("JNI: stopPlaybackNative called");
+    jboolean result = stopPlayback() ? JNI_TRUE : JNI_FALSE;
+    LOGD("JNI: stopPlaybackNative returned %s", result == JNI_TRUE ? "true" : "false");
+    return result;
 }
 
 // JNI方法 - 设置播放状态回调
@@ -603,17 +598,17 @@ extern "C" JNIEXPORT void JNICALL Java_com_example_aaudioplayer_SimpleAudioPlaye
     if (gPlaybackStateCallback) {
         env->DeleteGlobalRef(gPlaybackStateCallback);
         gPlaybackStateCallback = nullptr;
-        logDebug("Previous callback released");
+        LOGD("Previous callback released");
     }
 
     if (callback) {
         gPlaybackStateCallback = env->NewGlobalRef(callback);
         jclass callbackClass = env->GetObjectClass(callback);
         gOnPlaybackStateChangedMethodId = env->GetMethodID(callbackClass, "onPlaybackStateChanged", "(Z)V");
-        logDebug("Callback set successfully");
+        LOGI("Callback set successfully");
     } else {
         gOnPlaybackStateChangedMethodId = nullptr;
-        logDebug("Callback cleared");
+        LOGD("Callback cleared");
     }
 }
 

@@ -26,7 +26,7 @@ project("aaudioplayer")
 # used in the AndroidManifest.xml file.
 add_library(${CMAKE_PROJECT_NAME} SHARED
         # List C/C++ source files with relative paths to this CMakeLists.txt.
-        simple-aaudio-player.cpp)
+        aaudio_player.cpp)
 
 # Specify C++11 standard for std::atomic support
 set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY CXX_STANDARD 11)
