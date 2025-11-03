@@ -8,7 +8,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.aaudioplayer"
-        minSdk = 31
+        minSdk = 32
         versionCode = 1
         versionName = "1.0"
 
@@ -37,9 +37,9 @@ android {
     buildFeatures {
         viewBinding = true
     }
-    compileSdk = 35
-    ndkVersion = "27.0.12077973"
-    buildToolsVersion = "36.0.0"
+    compileSdkVersion("android-36.1")
+    ndkVersion = "29.0.14206865"
+    buildToolsVersion = "36.1.0"
 }
 
 dependencies {
