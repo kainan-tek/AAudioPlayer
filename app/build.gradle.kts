@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.androidApplication)
-    alias(libs.plugins.jetbrainsKotlinAndroid)
 }
 
 android {
@@ -11,18 +10,6 @@ android {
         minSdk = 32
         versionCode = 1
         versionName = "1.0"
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
-
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
@@ -31,15 +18,15 @@ android {
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
         }
     }
     buildFeatures {
         viewBinding = true
     }
-    compileSdkVersion("android-36.1")
+    compileSdk = 36
     ndkVersion = "29.0.14206865"
     buildToolsVersion = "36.1.0"
+    compileSdkMinor = 1
 }
 
 dependencies {
