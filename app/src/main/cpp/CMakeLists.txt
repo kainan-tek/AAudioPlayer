@@ -26,10 +26,11 @@ project("aaudioplayer")
 # used in the AndroidManifest.xml file.
 add_library(${CMAKE_PROJECT_NAME} SHARED
         # List C/C++ source files with relative paths to this CMakeLists.txt.
-        aaudio_player.cpp)
+        aaudio_player.cpp
+        WaveFile.cpp)
 
-# Specify C++11 standard for std::atomic support
-set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY CXX_STANDARD 11)
+# Specify C++14 standard for std::make_unique support
+set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY CXX_STANDARD 14)
 set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 
 # Specifies libraries CMake should link to your target library. You

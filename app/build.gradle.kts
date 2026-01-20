@@ -4,10 +4,14 @@ plugins {
 
 android {
     namespace = "com.example.aaudioplayer"
+    compileSdk = 36
+    compileSdkMinor = 1
+    ndkVersion = "29.0.14206865"
+    buildToolsVersion = "36.1.0"
 
     defaultConfig {
         applicationId = "com.example.aaudioplayer"
-        minSdk = 32
+        minSdk = 32  // AAudio requires API 26+
         versionCode = 1
         versionName = "1.0"
     }
@@ -20,13 +24,6 @@ android {
             path = file("src/main/cpp/CMakeLists.txt")
         }
     }
-    buildFeatures {
-        viewBinding = true
-    }
-    compileSdk = 36
-    ndkVersion = "29.0.14206865"
-    buildToolsVersion = "36.1.0"
-    compileSdkMinor = 1
 }
 
 dependencies {
