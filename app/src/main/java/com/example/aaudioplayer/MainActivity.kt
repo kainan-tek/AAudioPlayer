@@ -69,7 +69,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initAudioPlayer() {
-        audioPlayer = AAudioPlayer()
+        audioPlayer = AAudioPlayer(this)
         audioPlayer.setPlaybackListener(object : AAudioPlayer.PlaybackListener {
             override fun onPlaybackStarted() {
                 runOnUiThread {

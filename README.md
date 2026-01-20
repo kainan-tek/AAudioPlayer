@@ -14,6 +14,7 @@ AAudio Player是一个专为Android平台设计的音频播放测试工具，使
 - **📱 简洁界面**: 直观的播放控制界面
 - **🛠️ 动态配置**: 运行时切换音频配置
 - **📊 实时状态**: 播放状态实时反馈
+- **🎯 音频焦点管理**: 自动处理音频焦点申请和释放
 
 ## 🏗️ 技术架构
 
@@ -44,7 +45,7 @@ AAudio Player是一个专为Android平台设计的音频播放测试工具，使
 
 1. **克隆项目**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/kainan-tek/AAudioPlayer.git
    cd AAudioPlayer
    ```
 
@@ -170,6 +171,15 @@ AAudioPlayer/
 - 支持多种音频格式 (16/24/32位PCM)
 - 动态缓冲区大小优化
 - 完整的错误处理机制
+- 音频焦点自动管理
+
+### 音频焦点管理
+
+- 播放前自动申请音频焦点
+- 播放结束自动释放音频焦点
+- 焦点丢失时自动停止播放
+- 使用现代的AudioFocusRequest API
+- 根据配置自动设置AudioAttributes
 
 ### WAV文件支持
 
@@ -204,6 +214,11 @@ AAudioPlayer/
    - 检查JSON格式是否正确
    - 确认配置文件路径
    - 查看应用日志输出
+
+4. **音频焦点问题**
+   - 检查是否有其他应用占用音频焦点
+   - 确认应用有音频播放权限
+   - 查看焦点相关日志信息
 
 ### 调试信息
 
@@ -249,8 +264,8 @@ adb logcat -s AAudioPlayer WaveFile MainActivity
 
 如有问题或建议，请通过以下方式联系：
 
-- 提交Issue: [GitHub Issues](https://github.com/your-repo/issues)
-- 邮箱: your-email@example.com
+- 提交Issue: [GitHub Issues](https://github.com/kainan-tek/AAudioPlayer/issues)
+- 邮箱: kainanos@outlook.com
 
 ---
 
