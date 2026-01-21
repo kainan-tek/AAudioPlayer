@@ -88,20 +88,20 @@ AAudio Player是一个专为Android平台设计的音频播放测试工具，使
 
 应用支持以下音频使用场景：
 
-| 配置名称 | Usage | Content Type | Performance Mode | 说明 |
-|---------|-------|--------------|------------------|------|
-| 媒体播放 | MEDIA | MUSIC | POWER_SAVING | 标准媒体播放 |
-| 语音通话 | VOICE_COMMUNICATION | SPEECH | LOW_LATENCY | 语音通话场景 |
-| 通话信令 | VOICE_COMMUNICATION_SIGNALLING | SONIFICATION | POWER_SAVING | 通话提示音 |
-| 闹钟音效 | ALARM | SONIFICATION | POWER_SAVING | 闹钟提醒 |
-| 通知音效 | NOTIFICATION | SONIFICATION | POWER_SAVING | 系统通知 |
-| 铃声播放 | RINGTONE | SONIFICATION | POWER_SAVING | 来电铃声 |
-| 通知事件 | NOTIFICATION_EVENT | SONIFICATION | POWER_SAVING | 事件提醒 |
-| 辅助功能 | ACCESSIBILITY | SPEECH | LOW_LATENCY | 无障碍服务 |
-| 导航语音 | NAVIGATION_GUIDANCE | SPEECH | POWER_SAVING | 导航提示 |
-| 系统提示音 | SYSTEM_SONIFICATION | SONIFICATION | LOW_LATENCY | 系统音效 |
-| 游戏音频 | GAME | SONIFICATION | POWER_SAVING | 游戏音效 |
-| 语音助手 | ASSISTANT | SPEECH | POWER_SAVING | AI助手 |
+| 配置名称  | Usage                          | Content Type | Performance Mode | 说明     |
+|-------|--------------------------------|--------------|------------------|--------|
+| 媒体播放  | MEDIA                          | MUSIC        | POWER_SAVING     | 标准媒体播放 |
+| 语音通话  | VOICE_COMMUNICATION            | SPEECH       | LOW_LATENCY      | 语音通话场景 |
+| 通话信令  | VOICE_COMMUNICATION_SIGNALLING | SONIFICATION | POWER_SAVING     | 通话提示音  |
+| 闹钟音效  | ALARM                          | SONIFICATION | POWER_SAVING     | 闹钟提醒   |
+| 通知音效  | NOTIFICATION                   | SONIFICATION | POWER_SAVING     | 系统通知   |
+| 铃声播放  | RINGTONE                       | SONIFICATION | POWER_SAVING     | 来电铃声   |
+| 通知事件  | NOTIFICATION_EVENT             | SONIFICATION | POWER_SAVING     | 事件提醒   |
+| 辅助功能  | ACCESSIBILITY                  | SPEECH       | LOW_LATENCY      | 无障碍服务  |
+| 导航语音  | NAVIGATION_GUIDANCE            | SPEECH       | POWER_SAVING     | 导航提示   |
+| 系统提示音 | SYSTEM_SONIFICATION            | SONIFICATION | LOW_LATENCY      | 系统音效   |
+| 游戏音频  | GAME                           | SONIFICATION | POWER_SAVING     | 游戏音效   |
+| 语音助手  | ASSISTANT                      | SPEECH       | POWER_SAVING     | AI助手   |
 
 ## 🔧 配置文件
 
