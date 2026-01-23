@@ -236,10 +236,10 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetTextI18n")
     private fun updatePlaybackInfo() {
         currentConfig?.let { config ->
-            val configInfo = "文件: ${config.audioFilePath}\n" +
-                    "模式: ${config.performanceMode} | ${config.sharingMode}\n" +
+            val configInfo = "当前配置: ${config.description}\n" +
                     "用途: ${config.usage} | ${config.contentType}\n" +
-                    "当前配置: ${config.description}"
+                    "模式: ${config.performanceMode} | ${config.sharingMode}\n" +
+                    "文件: ${config.audioFilePath}"
             playbackInfoText.text = configInfo
         } ?: run {
             playbackInfoText.text = "播放信息"
