@@ -9,17 +9,17 @@ import java.io.File
  * 精简的AAudio配置数据类 - 移除了不再使用的缓冲区参数
  */
 data class AAudioConfig(
-    val usage: String = "MEDIA",
-    val performanceMode: String = "POWER_SAVING",
-    val sharingMode: String = "SHARED", 
-    val contentType: String = "MUSIC",
+    val usage: String = "AAUDIO_USAGE_MEDIA",
+    val performanceMode: String = "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
+    val sharingMode: String = "AAUDIO_SHARING_MODE_SHARED", 
+    val contentType: String = "AAUDIO_CONTENT_TYPE_MUSIC",
     val audioFilePath: String = "/data/48k_2ch_16bit.wav",
     val description: String = "默认配置"
 ) {
     companion object {
         private const val TAG = "AAudioConfig"
-        private const val CONFIG_FILE_PATH = "/data/aaudio_configs.json"
-        private const val ASSETS_CONFIG_FILE = "aaudio_configs.json"
+        private const val CONFIG_FILE_PATH = "/data/aaudio_player_configs.json"
+        private const val ASSETS_CONFIG_FILE = "aaudio_player_configs.json"
         
         fun loadConfigs(context: Context): List<AAudioConfig> {
             val externalFile = File(CONFIG_FILE_PATH)
@@ -38,8 +38,6 @@ data class AAudioConfig(
             }
         }
         
-        fun reloadConfigs(context: Context): List<AAudioConfig> = loadConfigs(context)
-        
         private fun parseConfigs(jsonString: String): List<AAudioConfig> {
             val configsArray = JSONObject(jsonString).getJSONArray("configs")
             return (0 until configsArray.length()).map { i ->
@@ -57,18 +55,18 @@ data class AAudioConfig(
         
         private fun getDefaultConfigs() = listOf(
             AAudioConfig(
-                usage = "MEDIA",
-                performanceMode = "POWER_SAVING",
-                sharingMode = "SHARED",
-                contentType = "MUSIC",
+                usage = "AAUDIO_USAGE_MEDIA",
+                performanceMode = "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
+                sharingMode = "AAUDIO_SHARING_MODE_SHARED",
+                contentType = "AAUDIO_CONTENT_TYPE_MUSIC",
                 audioFilePath = "/data/48k_2ch_16bit.wav",
                 description = "标准媒体播放配置"
             ),
             AAudioConfig(
-                usage = "NOTIFICATION",
-                performanceMode = "POWER_SAVING",
-                sharingMode = "SHARED",
-                contentType = "SONIFICATION",
+                usage = "AAUDIO_USAGE_NOTIFICATION",
+                performanceMode = "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
+                sharingMode = "AAUDIO_SHARING_MODE_SHARED",
+                contentType = "AAUDIO_CONTENT_TYPE_SONIFICATION",
                 audioFilePath = "/data/48k_2ch_16bit.wav",
                 description = "通知音效配置"
             )

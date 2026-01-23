@@ -26,8 +26,7 @@ project("aaudioplayer")
 # used in the AndroidManifest.xml file.
 add_library(${CMAKE_PROJECT_NAME} SHARED
         # List C/C++ source files with relative paths to this CMakeLists.txt.
-        aaudio_player.cpp
-        WaveFile.cpp)
+        aaudio_player.cpp)
 
 # Specify C++14 standard for std::make_unique support
 set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY CXX_STANDARD 14)

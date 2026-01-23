@@ -1,0 +1,100 @@
+{
+  "configs": [
+    {
+      "usage": "AAUDIO_USAGE_MEDIA",
+      "contentType": "AAUDIO_CONTENT_TYPE_MUSIC",
+      "performanceMode": "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
+      "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
+      "audioFilePath": "/data/48k_2ch_16bit.wav",
+      "description": "媒体播放 (省电模式)"
+    },
+    {
+      "usage": "AAUDIO_USAGE_VOICE_COMMUNICATION",
+      "contentType": "AAUDIO_CONTENT_TYPE_SPEECH",
+      "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
+      "sharingMode": "AAUDIO_SHARING_MODE_EXCLUSIVE",
+      "audioFilePath": "/data/48k_2ch_16bit.wav",
+      "description": "语音通话 (独占低延迟)"
+    },
+    {
+      "usage": "AAUDIO_USAGE_VOICE_COMMUNICATION_SIGNALLING",
+      "contentType": "AAUDIO_CONTENT_TYPE_SONIFICATION",
+      "performanceMode": "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
+      "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
+      "audioFilePath": "/data/48k_2ch_16bit.wav",
+      "description": "通话信令音 (省电模式)"
+    },
+    {
+      "usage": "AAUDIO_USAGE_ALARM",
+      "contentType": "AAUDIO_CONTENT_TYPE_SONIFICATION",
+      "performanceMode": "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
+      "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
+      "audioFilePath": "/data/48k_2ch_16bit.wav",
+      "description": "闹钟音效 (省电模式)"
+    },
+    {
+      "usage": "AAUDIO_USAGE_NOTIFICATION",
+      "contentType": "AAUDIO_CONTENT_TYPE_SONIFICATION",
+      "performanceMode": "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
+      "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
+      "audioFilePath": "/data/48k_2ch_16bit.wav",
+      "description": "通知音效 (省电模式)"
+    },
+    {
+      "usage": "AAUDIO_USAGE_NOTIFICATION_RINGTONE",
+      "contentType": "AAUDIO_CONTENT_TYPE_SONIFICATION",
+      "performanceMode": "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
+      "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
+      "audioFilePath": "/data/48k_2ch_16bit.wav",
+      "description": "铃声播放 (省电模式)"
+    },
+    {
+      "usage": "AAUDIO_USAGE_NOTIFICATION_EVENT",
+      "contentType": "AAUDIO_CONTENT_TYPE_SONIFICATION",
+      "performanceMode": "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
+      "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
+      "audioFilePath": "/data/48k_2ch_16bit.wav",
+      "description": "通知事件 (省电模式)"
+    },
+    {
+      "usage": "AAUDIO_USAGE_ASSISTANCE_ACCESSIBILITY",
+      "contentType": "AAUDIO_CONTENT_TYPE_SPEECH",
+      "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
+      "sharingMode": "AAUDIO_SHARING_MODE_EXCLUSIVE",
+      "audioFilePath": "/data/48k_2ch_16bit.wav",
+      "description": "辅助功能 (独占低延迟)"
+    },
+    {
+      "usage": "AAUDIO_USAGE_ASSISTANCE_NAVIGATION_GUIDANCE",
+      "contentType": "AAUDIO_CONTENT_TYPE_SPEECH",
+      "performanceMode": "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
+      "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
+      "audioFilePath": "/data/48k_2ch_16bit.wav",
+      "description": "导航语音 (省电模式)"
+    },
+    {
+      "usage": "AAUDIO_USAGE_ASSISTANCE_SONIFICATION",
+      "contentType": "AAUDIO_CONTENT_TYPE_SONIFICATION",
+      "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
+      "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
+      "audioFilePath": "/data/48k_2ch_16bit.wav",
+      "description": "系统提示音 (低延迟)"
+    },
+    {
+      "usage": "AAUDIO_USAGE_GAME",
+      "contentType": "AAUDIO_CONTENT_TYPE_SONIFICATION",
+      "performanceMode": "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
+      "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
+      "audioFilePath": "/data/48k_2ch_16bit.wav",
+      "description": "游戏音频 (省电模式)"
+    },
+    {
+      "usage": "AAUDIO_USAGE_ASSISTANT",
+      "contentType": "AAUDIO_CONTENT_TYPE_SPEECH",
+      "performanceMode": "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
+      "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
+      "audioFilePath": "/data/48k_2ch_16bit.wav",
+      "description": "语音助手 (省电模式)"
+    }
+  ]
+}
