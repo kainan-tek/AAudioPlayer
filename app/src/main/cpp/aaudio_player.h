@@ -33,8 +33,8 @@ extern "C" {
  * @return JNI_TRUE if initialization successful, JNI_FALSE otherwise
  */
 JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_initializeNative(JNIEnv* env,
-                                                                                        jobject thiz,
-                                                                                        jstring filePath);
+                                                                                              jobject thiz,
+                                                                                              jstring filePath);
 
 /**
  * Start audio playback
@@ -42,7 +42,8 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_ini
  * @param thiz Java object instance
  * @return JNI_TRUE if playback started successfully, JNI_FALSE otherwise
  */
-JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_startNativePlayback(JNIEnv* env, jobject thiz);
+JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_startNativePlayback(JNIEnv* env,
+                                                                                                 jobject thiz);
 
 /**
  * Stop audio playback

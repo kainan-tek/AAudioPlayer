@@ -226,8 +226,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
 }
 
 JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_initializeNative(JNIEnv* env,
-                                                                                        jobject thiz,
-                                                                                        jstring filePath) {
+                                                                                              jobject thiz,
+                                                                                              jstring filePath) {
     LOGI("initializeNative");
 
     // 保存JVM引用
@@ -238,7 +238,7 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_ini
         env->DeleteGlobalRef(g_player.playerInstance);
     }
     g_player.playerInstance = env->NewGlobalRef(thiz);
-    
+
     // 获取回调方法ID
     jclass clazz = env->GetObjectClass(thiz);
     g_player.onPlaybackStartedMethod = env->GetMethodID(clazz, "onNativePlaybackStarted", "()V");
@@ -306,7 +306,8 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_set
     return JNI_TRUE;
 }
 
-JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_startNativePlayback(JNIEnv* env, jobject thiz) {
+JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_startNativePlayback(JNIEnv* env,
+                                                                                                 jobject thiz) {
     LOGI("startNativePlayback");
 
     if (g_player.isPlaying.load()) {
