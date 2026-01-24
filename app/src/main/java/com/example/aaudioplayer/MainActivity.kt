@@ -54,6 +54,7 @@ class MainActivity : AppCompatActivity() {
         checkPermissions()
     }
 
+    @SuppressLint("SetTextI18n")
     private fun initializeViews() {
         playButton = findViewById(R.id.playButton)
         stopButton = findViewById(R.id.stopButton)
@@ -74,6 +75,7 @@ class MainActivity : AppCompatActivity() {
     private fun initializeAudioPlayer() {
         audioPlayer = AAudioPlayer(this)
         audioPlayer.setPlaybackListener(object : AAudioPlayer.PlaybackListener {
+            @SuppressLint("SetTextI18n")
             override fun onPlaybackStarted() {
                 runOnUiThread {
                     playButton.isEnabled = false
@@ -84,6 +86,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+            @SuppressLint("SetTextI18n")
             override fun onPlaybackStopped() {
                 runOnUiThread {
                     playButton.isEnabled = true
@@ -107,6 +110,7 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    @SuppressLint("SetTextI18n")
     private fun loadConfigurations() {
         availableConfigs = try {
             AAudioConfig.loadConfigs(this)
@@ -156,6 +160,7 @@ class MainActivity : AppCompatActivity() {
         ActivityCompat.requestPermissions(this, arrayOf(permission), PERMISSION_REQUEST_CODE)
     }
 
+    @SuppressLint("SetTextI18n")
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -175,11 +180,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @SuppressLint("SetTextI18n")
     private fun onPermissionsGranted() {
         statusText.text = "Ready to play"
         Log.i(TAG, "All permissions granted")
     }
 
+    @SuppressLint("SetTextI18n")
     private fun startPlayback() {
         if (audioPlayer.isPlaying()) {
             Toast.makeText(this, "Already playing", Toast.LENGTH_SHORT).show()
@@ -196,6 +203,7 @@ class MainActivity : AppCompatActivity() {
         Log.i(TAG, "Playback started")
     }
 
+    @SuppressLint("SetTextI18n")
     private fun stopPlayback() {
         if (!audioPlayer.isPlaying()) {
             Toast.makeText(this, "Not currently playing", Toast.LENGTH_SHORT).show()
