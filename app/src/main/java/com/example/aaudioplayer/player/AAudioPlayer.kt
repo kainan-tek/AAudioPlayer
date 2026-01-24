@@ -8,7 +8,7 @@ import android.util.Log
 import com.example.aaudioplayer.config.AAudioConfig
 
 /**
- * 简化的AAudio播放器 - 支持音频焦点管理
+ * Simplified AAudio Player - supports audio focus management
  */
 class AAudioPlayer(context: Context) {
     companion object {
@@ -35,41 +35,41 @@ class AAudioPlayer(context: Context) {
     private var listener: PlaybackListener? = null
     private var isPlaying = false
     
-    // 音频焦点相关
+    // Audio focus related
     private var audioFocusRequest: AudioFocusRequest? = null
     
-    // 音频焦点监听器
+    // Audio focus change listener
     private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
         when (focusChange) {
             AudioManager.AUDIOFOCUS_GAIN -> {
-                Log.d(TAG, "音频焦点获得")
-                // 可以在这里恢复播放，但保持简单，不自动恢复
+                Log.d(TAG, "Audio focus gained")
+                // Could resume playback here, but keeping it simple, no auto-resume
             }
             AudioManager.AUDIOFOCUS_LOSS -> {
-                Log.d(TAG, "音频焦点永久丢失")
-                stop() // 停止播放
+                Log.d(TAG, "Audio focus lost permanently")
+                stop() // Stop playback
             }
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                Log.d(TAG, "音频焦点暂时丢失")
-                stop() // 停止播放
+                Log.d(TAG, "Audio focus lost temporarily")
+                stop() // Stop playback
             }
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
-                Log.d(TAG, "音频焦点丢失但可以降低音量")
-                // 简化处理：直接停止播放
+                Log.d(TAG, "Audio focus lost but can duck")
+                // Simplified handling: stop playback directly
                 stop()
             }
         }
     }
 
     init {
-        // 初始化native层，传入默认配置
+        // Initialize native layer, pass default configuration
         initializeNative(currentConfig.audioFilePath)
-        // 设置默认配置
+        // Set default configuration
         setNativeConfig(currentConfig.usage, currentConfig.contentType, currentConfig.performanceMode, currentConfig.sharingMode, currentConfig.audioFilePath)
     }
     
     /**
-     * 申请音频焦点
+     * Request audio focus
      */
     private fun requestAudioFocus(): Boolean {
         val audioAttributes = AudioAttributes.Builder()
@@ -88,7 +88,7 @@ class AAudioPlayer(context: Context) {
     }
 
     /**
-     * 释放音频焦点
+     * Release audio focus
      */
     private fun abandonAudioFocus() {
         audioFocusRequest?.let { request ->
@@ -98,7 +98,7 @@ class AAudioPlayer(context: Context) {
     }
 
     /**
-     * 根据配置获取AudioAttributes的Usage
+     * Get AudioAttributes Usage based on configuration
      */
     private fun getAudioAttributesUsage(): Int {
         return when (currentConfig.usage) {
@@ -119,7 +119,7 @@ class AAudioPlayer(context: Context) {
     }
 
     /**
-     * 根据配置获取AudioAttributes的ContentType
+     * Get AudioAttributes ContentType based on configuration
      */
     private fun getAudioAttributesContentType(): Int {
         return when (currentConfig.contentType) {
@@ -137,40 +137,40 @@ class AAudioPlayer(context: Context) {
     
     fun setAudioConfig(config: AAudioConfig) {
         currentConfig = config
-        Log.i(TAG, "配置已更新: ${config.description}")
+        Log.i(TAG, "Configuration updated: ${config.description}")
         
-        // 直接更新native层配置，无需重新初始化
+        // Directly update native layer configuration, no need to reinitialize
         setNativeConfig(config.usage, config.contentType, config.performanceMode, config.sharingMode, config.audioFilePath)
     }
     
     fun play(): Boolean {
         if (isPlaying) {
-            Log.w(TAG, "已在播放中")
+            Log.w(TAG, "Already playing")
             return false
         }
         
-        stopNativePlayback() // 确保先停止之前的播放
+        stopNativePlayback() // Ensure previous playback is stopped first
         
-        // 申请音频焦点
+        // Request audio focus
         if (!requestAudioFocus()) {
-            Log.e(TAG, "无法获取音频焦点")
-            listener?.onPlaybackError("无法获取音频焦点")
+            Log.e(TAG, "Unable to obtain audio focus")
+            listener?.onPlaybackError("Unable to obtain audio focus")
             return false
         }
         
         val result = startNativePlayback()
         if (!result) {
-            Log.e(TAG, "播放启动失败")
-            abandonAudioFocus() // 播放失败时释放焦点
-            listener?.onPlaybackError("播放启动失败")
+            Log.e(TAG, "Playback start failed")
+            abandonAudioFocus() // Release focus on playback failure
+            listener?.onPlaybackError("Playback start failed")
         }
         return result
     }
     
     fun stop(): Boolean {
         stopNativePlayback()
-        abandonAudioFocus() // 停止播放时释放焦点
-        // 状态更新将通过native回调处理
+        abandonAudioFocus() // Release focus when stopping playback
+        // Status update will be handled through native callback
         return true
     }
     
@@ -183,33 +183,33 @@ class AAudioPlayer(context: Context) {
         releaseNative()
     }
     
-    // Native方法
+    // Native methods
     private external fun initializeNative(filePath: String): Boolean
     private external fun startNativePlayback(): Boolean
     private external fun stopNativePlayback()
     private external fun releaseNative()
     private external fun setNativeConfig(usage: String, contentType: String, performanceMode: String, sharingMode: String, filePath: String): Boolean
     
-    // 从Native层调用的回调方法
+    // Callback methods called from Native layer
     @Suppress("unused")
     private fun onNativePlaybackStarted() {
         isPlaying = true
         listener?.onPlaybackStarted()
-        Log.i(TAG, "播放启动成功")
+        Log.i(TAG, "Playback started successfully")
     }
     
     @Suppress("unused")
     private fun onNativePlaybackStopped() {
         isPlaying = false
         listener?.onPlaybackStopped()
-        Log.i(TAG, "播放已停止")
+        Log.i(TAG, "Playback stopped")
     }
     
     @Suppress("unused")
     private fun onNativePlaybackError(error: String) {
         isPlaying = false
-        abandonAudioFocus() // 出错时释放音频焦点
+        abandonAudioFocus() // Release audio focus on error
         listener?.onPlaybackError(error)
-        Log.e(TAG, "播放错误: $error")
+        Log.e(TAG, "Playback error: $error")
     }
 }

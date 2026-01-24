@@ -16,14 +16,14 @@ struct AudioPlayerState {
     std::unique_ptr<WaveFile> waveFile;
     std::atomic<bool> isPlaying{false};
 
-    // Java回调相关
+    // Java callback related
     JavaVM* jvm = nullptr;
     jobject playerInstance = nullptr;
     jmethodID onPlaybackStartedMethod = nullptr;
     jmethodID onPlaybackStoppedMethod = nullptr;
     jmethodID onPlaybackErrorMethod = nullptr;
 
-    // 配置参数
+    // Configuration parameters
     aaudio_usage_t usage = AAUDIO_USAGE_MEDIA;
     aaudio_content_type_t contentType = AAUDIO_CONTENT_TYPE_MUSIC;
     aaudio_performance_mode_t performanceMode = AAUDIO_PERFORMANCE_MODE_LOW_LATENCY;
@@ -33,7 +33,7 @@ struct AudioPlayerState {
 
 static AudioPlayerState g_player;
 
-// Java回调函数
+// Java callback functions
 static void notifyPlaybackStarted() {
     if (g_player.jvm && g_player.playerInstance && g_player.onPlaybackStartedMethod) {
         JNIEnv* env;
@@ -63,7 +63,7 @@ static void notifyPlaybackError(const std::string& error) {
     }
 }
 
-// 枚举映射
+// Enumeration mapping
 static const std::unordered_map<std::string, aaudio_usage_t> USAGE_MAP = {
     {"AAUDIO_USAGE_MEDIA", AAUDIO_USAGE_MEDIA},
     {"AAUDIO_USAGE_VOICE_COMMUNICATION", AAUDIO_USAGE_VOICE_COMMUNICATION},
@@ -84,7 +84,7 @@ static const std::unordered_map<std::string, aaudio_content_type_t> CONTENT_TYPE
     {"AAUDIO_CONTENT_TYPE_MOVIE", AAUDIO_CONTENT_TYPE_MOVIE},
     {"AAUDIO_CONTENT_TYPE_SONIFICATION", AAUDIO_CONTENT_TYPE_SONIFICATION}};
 
-// 枚举查找函数
+// Enumeration lookup functions
 static aaudio_usage_t getUsageFromString(const std::string& usage) {
     auto it = USAGE_MAP.find(usage);
     return (it != USAGE_MAP.end()) ? it->second : AAUDIO_USAGE_MEDIA;
@@ -101,7 +101,7 @@ static aaudio_performance_mode_t getPerformanceModeFromString(const std::string&
     } else if (performanceMode == "AAUDIO_PERFORMANCE_MODE_POWER_SAVING") {
         return AAUDIO_PERFORMANCE_MODE_POWER_SAVING;
     }
-    return AAUDIO_PERFORMANCE_MODE_LOW_LATENCY; // 默认低延迟
+    return AAUDIO_PERFORMANCE_MODE_LOW_LATENCY; // Default low latency
 }
 
 static aaudio_sharing_mode_t getSharingModeFromString(const std::string& sharingMode) {
@@ -110,10 +110,10 @@ static aaudio_sharing_mode_t getSharingModeFromString(const std::string& sharing
     } else if (sharingMode == "AAUDIO_SHARING_MODE_SHARED") {
         return AAUDIO_SHARING_MODE_SHARED;
     }
-    return AAUDIO_SHARING_MODE_SHARED; // 默认共享
+    return AAUDIO_SHARING_MODE_SHARED; // Default shared
 }
 
-// 音频回调
+// Audio callback
 static aaudio_data_callback_result_t
 audioCallback(AAudioStream* stream, void* userData, void* audioData, int32_t numFrames) {
     if (!g_player.isPlaying.load()) {
@@ -122,11 +122,11 @@ audioCallback(AAudioStream* stream, void* userData, void* audioData, int32_t num
 
     if (!g_player.waveFile || !g_player.waveFile->isOpen()) {
         g_player.isPlaying.store(false);
-        notifyPlaybackError("音频文件未打开");
+        notifyPlaybackError("Audio file not opened");
         return AAUDIO_CALLBACK_RESULT_STOP;
     }
 
-    // 计算需要的字节数
+    // Calculate required bytes
     int32_t channelCount = AAudioStream_getChannelCount(stream);
     int32_t bytesPerSample = (AAudioStream_getFormat(stream) == AAUDIO_FORMAT_PCM_I16) ? 2 : 4;
     int32_t bytesToRead = numFrames * channelCount * bytesPerSample;
@@ -134,7 +134,7 @@ audioCallback(AAudioStream* stream, void* userData, void* audioData, int32_t num
     size_t bytesRead = g_player.waveFile->readAudioData(audioData, bytesToRead);
 
     if (bytesRead < static_cast<size_t>(bytesToRead)) {
-        // 播放完成
+        // Playback completed
         g_player.isPlaying.store(false);
         notifyPlaybackStopped();
         return AAUDIO_CALLBACK_RESULT_STOP;
@@ -143,16 +143,16 @@ audioCallback(AAudioStream* stream, void* userData, void* audioData, int32_t num
     return AAUDIO_CALLBACK_RESULT_CONTINUE;
 }
 
-// 错误回调
+// Error callback
 static void errorCallback(AAudioStream* stream, void* userData, aaudio_result_t error) {
     LOGE("AAudio error: %s", AAudio_convertResultToText(error));
     g_player.isPlaying.store(false);
-    std::string errorMsg = "播放流错误: ";
+    std::string errorMsg = "Playback stream error: ";
     errorMsg += AAudio_convertResultToText(error);
     notifyPlaybackError(errorMsg);
 }
 
-// 创建AAudio流
+// Create AAudio stream
 static bool createAAudioStream() {
     AAudioStreamBuilder* builder = nullptr;
     aaudio_result_t result = AAudio_createStreamBuilder(&builder);
@@ -161,7 +161,7 @@ static bool createAAudioStream() {
         return false;
     }
 
-    // 使用WAV文件参数或默认值
+    // Use WAV file parameters or default values
     int32_t sampleRate = 48000;
     int32_t channelCount = 2;
     aaudio_format_t format = AAUDIO_FORMAT_PCM_I16;
@@ -172,7 +172,7 @@ static bool createAAudioStream() {
         format = static_cast<aaudio_format_t>(g_player.waveFile->getAAudioFormat());
     }
 
-    // 配置流
+    // Configure stream
     AAudioStreamBuilder_setSampleRate(builder, sampleRate);
     AAudioStreamBuilder_setChannelCount(builder, channelCount);
     AAudioStreamBuilder_setFormat(builder, format);
@@ -182,17 +182,17 @@ static bool createAAudioStream() {
     AAudioStreamBuilder_setDirection(builder, AAUDIO_DIRECTION_OUTPUT);
     AAudioStreamBuilder_setPerformanceMode(builder, g_player.performanceMode);
 
-    // 缓冲区配置
+    // Buffer configuration
     int32_t bufferCapacity = (g_player.performanceMode == AAUDIO_PERFORMANCE_MODE_LOW_LATENCY)
                                  ? (sampleRate * 40) / 1000   // 40ms for low latency
                                  : (sampleRate * 100) / 1000; // 100ms for power saving
     AAudioStreamBuilder_setBufferCapacityInFrames(builder, bufferCapacity);
 
-    // 设置回调
+    // Set callbacks
     AAudioStreamBuilder_setDataCallback(builder, audioCallback, nullptr);
     AAudioStreamBuilder_setErrorCallback(builder, errorCallback, nullptr);
 
-    // 创建流
+    // Create stream
     result = AAudioStreamBuilder_openStream(builder, &g_player.stream);
     AAudioStreamBuilder_delete(builder);
     if (result != AAUDIO_OK) {
@@ -200,7 +200,7 @@ static bool createAAudioStream() {
         return false;
     }
 
-    // 优化缓冲区大小
+    // Optimize buffer size
     int32_t framesPerBurst = AAudioStream_getFramesPerBurst(g_player.stream);
     if (framesPerBurst > 0) {
         int32_t optimalSize =
@@ -216,7 +216,7 @@ static bool createAAudioStream() {
     return true;
 }
 
-// JNI方法实现
+// JNI method implementations
 extern "C" {
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
@@ -230,16 +230,16 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_ini
                                                                                               jstring filePath) {
     LOGI("initializeNative");
 
-    // 保存JVM引用
+    // Save JVM reference
     env->GetJavaVM(&g_player.jvm);
 
-    // 保存Java对象引用
+    // Save Java object reference
     if (g_player.playerInstance) {
         env->DeleteGlobalRef(g_player.playerInstance);
     }
     g_player.playerInstance = env->NewGlobalRef(thiz);
 
-    // 获取回调方法ID
+    // Get callback method IDs
     jclass clazz = env->GetObjectClass(thiz);
     g_player.onPlaybackStartedMethod = env->GetMethodID(clazz, "onNativePlaybackStarted", "()V");
     g_player.onPlaybackStoppedMethod = env->GetMethodID(clazz, "onNativePlaybackStopped", "()V");
@@ -250,7 +250,7 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_ini
         return JNI_FALSE;
     }
 
-    // 获取文件路径
+    // Get file path
     if (filePath) {
         const char* path = env->GetStringUTFChars(filePath, nullptr);
         g_player.audioFilePath = std::string(path);
@@ -269,7 +269,7 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_set
                                                                                              jstring filePath) {
     LOGI("setNativeConfig");
 
-    // 更新配置参数
+    // Update configuration parameters
     if (usage) {
         const char* usageStr = env->GetStringUTFChars(usage, nullptr);
         g_player.usage = getUsageFromString(std::string(usageStr));
@@ -371,7 +371,7 @@ JNIEXPORT void JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_release
 
     g_player.waveFile.reset();
 
-    // 清理Java引用
+    // Clean up Java references
     if (g_player.playerInstance) {
         env->DeleteGlobalRef(g_player.playerInstance);
         g_player.playerInstance = nullptr;
@@ -389,7 +389,7 @@ WaveFile::WaveFile() : isOpen_(false), header_{} {}
 WaveFile::~WaveFile() { close(); }
 
 bool WaveFile::open(const std::string& filePath) {
-    close(); // 确保之前的文件已关闭
+    close(); // Ensure previous file is closed
 
     file_.open(filePath, std::ios::binary);
     if (!file_.is_open()) {
@@ -429,7 +429,7 @@ size_t WaveFile::readAudioData(void* buffer, size_t bufferSize) {
         return 0;
     }
 
-    // 检查bufferSize是否超过streamsize的最大值
+    // Check if bufferSize exceeds maximum streamsize value
     constexpr auto maxStreamSize = static_cast<size_t>(std::numeric_limits<std::streamsize>::max());
     size_t actualReadSize = std::min(bufferSize, maxStreamSize);
 
@@ -438,7 +438,7 @@ size_t WaveFile::readAudioData(void* buffer, size_t bufferSize) {
     auto bytesRead = static_cast<size_t>(file_.gcount());
 
     if (bytesRead < bufferSize) {
-        // 如果读取的数据不足，用0填充剩余部分
+        // If insufficient data is read, fill remaining part with zeros
         memset(static_cast<char*>(buffer) + bytesRead, 0, bufferSize - bytesRead);
     }
 
@@ -448,9 +448,9 @@ size_t WaveFile::readAudioData(void* buffer, size_t bufferSize) {
 bool WaveFile::isOpen() const { return isOpen_; }
 
 int32_t WaveFile::getAAudioFormat() const {
-    // 根据WAV文件的位深度返回对应的AAudio格式
-    // 注意：这里返回int32_t是为了避免包含AAudio头文件
-    // AAudio格式常量值：
+    // Return AAudio format based on WAV file bit depth
+    // Return int32_t to avoid including AAudio header files
+    // AAudio format constant values:
     // AAUDIO_FORMAT_PCM_I16 = 1
     // AAUDIO_FORMAT_PCM_I24_PACKED = 2
     // AAUDIO_FORMAT_PCM_I32 = 3
@@ -463,7 +463,7 @@ int32_t WaveFile::getAAudioFormat() const {
     case 32:
         return 3; // AAUDIO_FORMAT_PCM_I32
     default:
-        return 1; // 默认返回16位格式
+        return 1; // Default return 16-bit format
     }
 }
 
@@ -475,12 +475,12 @@ std::string WaveFile::getFormatInfo() const {
 }
 
 bool WaveFile::isValidFormat() const {
-    return (header_.audioFormat == 1 &&                               // PCM格式
-            header_.numChannels > 0 && header_.numChannels <= 16 &&   // 合理的声道数
-            header_.sampleRate > 0 && header_.sampleRate <= 192000 && // 合理的采样率
+    return (header_.audioFormat == 1 &&                               // PCM format
+            header_.numChannels > 0 && header_.numChannels <= 16 &&   // Reasonable channel count
+            header_.sampleRate > 0 && header_.sampleRate <= 192000 && // Reasonable sample rate
             (header_.bitsPerSample == 8 || header_.bitsPerSample == 16 || header_.bitsPerSample == 24 ||
-             header_.bitsPerSample == 32) && // 支持的位深
-            header_.dataSize > 0);           // 有音频数据
+             header_.bitsPerSample == 32) && // Supported bit depth
+            header_.dataSize > 0);           // Has audio data
 }
 
 bool WaveFile::readHeader() {
@@ -489,21 +489,21 @@ bool WaveFile::readHeader() {
 }
 
 bool WaveFile::validateRiffHeader() {
-    // 读取RIFF标识
+    // Read RIFF identifier
     file_.read(header_.riffId, 4);
     if (file_.gcount() != 4 || strncmp(header_.riffId, "RIFF", 4) != 0) {
         LOGE("Invalid RIFF header");
         return false;
     }
 
-    // 读取文件大小
+    // Read file size
     file_.read(reinterpret_cast<char*>(&header_.riffSize), 4);
     if (file_.gcount() != 4) {
         LOGE("Failed to read RIFF size");
         return false;
     }
 
-    // 读取WAVE标识
+    // Read WAVE identifier
     file_.read(header_.waveId, 4);
     if (file_.gcount() != 4 || strncmp(header_.waveId, "WAVE", 4) != 0) {
         LOGE("Invalid WAVE header");
@@ -517,7 +517,7 @@ bool WaveFile::readFmtChunk() {
     char chunkId[4];
     uint32_t chunkSize;
 
-    // 查找fmt子块
+    // Find fmt subchunk
     while (file_.good()) {
         file_.read(chunkId, 4);
         if (file_.gcount() != 4) {
@@ -532,10 +532,10 @@ bool WaveFile::readFmtChunk() {
         }
 
         if (strncmp(chunkId, "fmt ", 4) == 0) {
-            // 找到fmt子块
+            // Found fmt subchunk
             strncpy(header_.fmtId, chunkId, 4);
 
-            // 读取fmt数据
+            // Read fmt data
             file_.read(reinterpret_cast<char*>(&header_.audioFormat), 2);
             file_.read(reinterpret_cast<char*>(&header_.numChannels), 2);
             file_.read(reinterpret_cast<char*>(&header_.sampleRate), 4);
@@ -543,14 +543,14 @@ bool WaveFile::readFmtChunk() {
             file_.read(reinterpret_cast<char*>(&header_.blockAlign), 2);
             file_.read(reinterpret_cast<char*>(&header_.bitsPerSample), 2);
 
-            // 跳过额外的fmt数据（如果有）
+            // Skip extra fmt data (if any)
             if (chunkSize > 16) {
                 skipChunk(static_cast<uint32_t>(chunkSize - 16));
             }
 
             return true;
         } else {
-            // 跳过其他子块
+            // Skip other subchunks
             skipChunk(chunkSize);
         }
     }
@@ -563,7 +563,7 @@ bool WaveFile::findDataChunk() {
     char chunkId[4];
     uint32_t chunkSize;
 
-    // 查找data子块
+    // Find data subchunk
     while (file_.good()) {
         file_.read(chunkId, 4);
         if (file_.gcount() != 4) {
@@ -578,14 +578,14 @@ bool WaveFile::findDataChunk() {
         }
 
         if (strncmp(chunkId, "data", 4) == 0) {
-            // 找到data子块
+            // Found data subchunk
             strncpy(header_.dataId, chunkId, 4);
             header_.dataSize = chunkSize;
 
             LOGD("Found data chunk: size = %u bytes", chunkSize);
             return true;
         } else {
-            // 跳过其他子块
+            // Skip other subchunks
             skipChunk(chunkSize);
         }
     }
@@ -595,7 +595,7 @@ bool WaveFile::findDataChunk() {
 }
 
 void WaveFile::skipChunk(uint32_t chunkSize) {
-    // 检查chunkSize是否超过streamoff的最大值
+    // Check if chunkSize exceeds maximum streamoff value
     constexpr auto maxStreamOff = static_cast<uint64_t>(std::numeric_limits<std::streamoff>::max());
     if (static_cast<uint64_t>(chunkSize) > maxStreamOff) {
         LOGE("Chunk size too large: %u", chunkSize);
@@ -604,7 +604,7 @@ void WaveFile::skipChunk(uint32_t chunkSize) {
 
     file_.seekg(static_cast<std::streamoff>(chunkSize), std::ios::cur);
 
-    // WAV文件要求子块大小为偶数，如果是奇数需要跳过一个填充字节
+    // WAV files require subchunk size to be even, if odd need to skip one padding byte
     if (chunkSize % 2 == 1) {
         file_.seekg(1, std::ios::cur);
     }

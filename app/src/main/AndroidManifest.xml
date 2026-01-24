@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- 音频播放必要权限 -->
+    <!-- Required permissions for audio playback -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     
-    <!-- 读取外部存储中的音频文件 -->
+    <!-- Read audio files from external storage -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" 
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
-    <!-- 声明音频输出功能 -->
+    <!-- Declare audio output feature -->
     <uses-feature 
         android:name="android.hardware.audio.output" 
         android:required="true" />

@@ -17,15 +17,15 @@ import com.example.aaudioplayer.config.AAudioConfig
 import com.example.aaudioplayer.player.AAudioPlayer
 
 /**
- * AAudio播放器主界面
+ * AAudio Player Main Activity
  * 
- * 使用说明:
- * 1. 确保设备支持AAudio API (Android 8.1+)
- * 2. 授予存储权限
- * 3. 选择播放配置
- * 4. 开始播放
+ * Usage Instructions:
+ * 1. Ensure device supports AAudio API (Android 8.1+)
+ * 2. Grant storage permissions
+ * 3. Select playback configuration
+ * 4. Start playback
  * 
- * 系统要求: Android 8.1 (API 27+) 支持AAudio
+ * System Requirements: Android 8.1 (API 27+) with AAudio support
  */
 class MainActivity : AppCompatActivity() {
     
@@ -65,10 +65,10 @@ class MainActivity : AppCompatActivity() {
         stopButton.setOnClickListener { stopPlayback() }
         configButton.setOnClickListener { showConfigDialog() }
         
-        // 初始状态
+        // Initial state
         playButton.isEnabled = true
         stopButton.isEnabled = false
-        statusText.text = "准备播放"
+        statusText.text = "Ready to play"
     }
 
     private fun initializeAudioPlayer() {
@@ -79,7 +79,7 @@ class MainActivity : AppCompatActivity() {
                     playButton.isEnabled = false
                     stopButton.isEnabled = true
                     configButton.isEnabled = false
-                    statusText.text = "正在播放..."
+                    statusText.text = "Playing..."
                     updatePlaybackInfo()
                 }
             }
@@ -89,7 +89,7 @@ class MainActivity : AppCompatActivity() {
                     playButton.isEnabled = true
                     stopButton.isEnabled = false
                     configButton.isEnabled = true
-                    statusText.text = "播放已停止"
+                    statusText.text = "Playback stopped"
                     updatePlaybackInfo()
                 }
             }
@@ -100,7 +100,7 @@ class MainActivity : AppCompatActivity() {
                     playButton.isEnabled = true
                     stopButton.isEnabled = false
                     configButton.isEnabled = true
-                    statusText.text = "错误: $error"
+                    statusText.text = "Error: $error"
                     Toast.makeText(this@MainActivity, error, Toast.LENGTH_SHORT).show()
                 }
             }
@@ -111,7 +111,7 @@ class MainActivity : AppCompatActivity() {
         availableConfigs = try {
             AAudioConfig.loadConfigs(this)
         } catch (e: Exception) {
-            Log.e(TAG, "加载配置失败", e)
+            Log.e(TAG, "Failed to load configurations", e)
             emptyList()
         }
         
@@ -122,7 +122,7 @@ class MainActivity : AppCompatActivity() {
             Log.i(TAG, "Loaded ${availableConfigs.size} playback configurations")
         } else {
             Log.e(TAG, "Failed to load playback configurations")
-            statusText.text = "配置加载失败"
+            statusText.text = "Configuration load failed"
             playButton.isEnabled = false
             configButton.isEnabled = false
         }
@@ -138,10 +138,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun hasAudioPermissions(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+ 使用 READ_MEDIA_AUDIO
+            // Android 13+ uses READ_MEDIA_AUDIO
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
         } else {
-            // Android 12 及以下使用 READ_EXTERNAL_STORAGE
+            // Android 12 and below use READ_EXTERNAL_STORAGE
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         }
     }
@@ -169,20 +169,20 @@ class MainActivity : AppCompatActivity() {
             if (allGranted) {
                 onPermissionsGranted()
             } else {
-                Toast.makeText(this, "需要存储权限才能播放音频文件", Toast.LENGTH_LONG).show()
-                statusText.text = "权限被拒绝"
+                Toast.makeText(this, "Storage permission required to play audio files", Toast.LENGTH_LONG).show()
+                statusText.text = "Permission denied"
             }
         }
     }
 
     private fun onPermissionsGranted() {
-        statusText.text = "准备播放"
+        statusText.text = "Ready to play"
         Log.i(TAG, "All permissions granted")
     }
 
     private fun startPlayback() {
         if (audioPlayer.isPlaying()) {
-            Toast.makeText(this, "已在播放中", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Already playing", Toast.LENGTH_SHORT).show()
             return
         }
         
@@ -191,18 +191,18 @@ class MainActivity : AppCompatActivity() {
             return
         }
         
-        statusText.text = "准备播放..."
+        statusText.text = "Preparing to play..."
         audioPlayer.play()
         Log.i(TAG, "Playback started")
     }
 
     private fun stopPlayback() {
         if (!audioPlayer.isPlaying()) {
-            Toast.makeText(this, "当前未在播放", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Not currently playing", Toast.LENGTH_SHORT).show()
             return
         }
         
-        statusText.text = "正在停止..."
+        statusText.text = "Stopping..."
         audioPlayer.stop()
         Log.i(TAG, "Playback stopped")
     }
@@ -210,7 +210,7 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetTextI18n")
     private fun showConfigDialog() {
         if (availableConfigs.isEmpty()) {
-            Toast.makeText(this, "没有可用的播放配置", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "No available playback configurations", Toast.LENGTH_SHORT).show()
             return
         }
         
@@ -218,31 +218,31 @@ class MainActivity : AppCompatActivity() {
         val currentIndex = availableConfigs.indexOf(currentConfig)
         
         AlertDialog.Builder(this)
-            .setTitle("选择播放配置")
+            .setTitle("Select Playback Configuration")
             .setSingleChoiceItems(configNames, currentIndex) { dialog, which ->
                 currentConfig = availableConfigs[which]
                 audioPlayer.setAudioConfig(currentConfig!!)
                 updatePlaybackInfo()
                 
-                Toast.makeText(this, "已切换到: ${currentConfig!!.description}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Switched to: ${currentConfig!!.description}", Toast.LENGTH_SHORT).show()
                 Log.i(TAG, "Config changed to: ${currentConfig!!.description}")
                 
                 dialog.dismiss()
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton("Cancel", null)
             .show()
     }
 
     @SuppressLint("SetTextI18n")
     private fun updatePlaybackInfo() {
         currentConfig?.let { config ->
-            val configInfo = "当前配置: ${config.description}\n" +
-                    "用途: ${config.usage} | ${config.contentType}\n" +
-                    "模式: ${config.performanceMode} | ${config.sharingMode}\n" +
-                    "文件: ${config.audioFilePath}"
+            val configInfo = "Current Config: ${config.description}\n" +
+                    "Usage: ${config.usage} | ${config.contentType}\n" +
+                    "Mode: ${config.performanceMode} | ${config.sharingMode}\n" +
+                    "File: ${config.audioFilePath}"
             playbackInfoText.text = configInfo
         } ?: run {
-            playbackInfoText.text = "播放信息"
+            playbackInfoText.text = "Playback Info"
         }
     }
 

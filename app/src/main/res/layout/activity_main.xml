@@ -9,14 +9,14 @@
         android:id="@+id/statusTextView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="准备播放"
+        android:text="Ready to Play"
         android:textSize="16sp"
         android:gravity="center"
         android:padding="16dp"
         android:background="@drawable/status_background"
         android:layout_marginBottom="16dp" />
 
-    <!-- 播放控制按钮行 -->
+    <!-- Playback control button row -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -29,7 +29,7 @@
             android:layout_height="80dp"
             android:layout_weight="1"
             android:layout_marginEnd="8dp"
-            android:text="开始播放"
+            android:text="Start Playback"
             android:textSize="18sp"
             android:backgroundTint="#4CAF50" />
 
@@ -39,7 +39,7 @@
             android:layout_height="80dp"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
-            android:text="停止播放"
+            android:text="Stop Playback"
             android:textSize="18sp"
             android:backgroundTint="#F44336"
             android:enabled="false" />
@@ -50,14 +50,14 @@
         android:id="@+id/configButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="播放配置"
+        android:text="Playback Configuration"
         android:layout_marginBottom="16dp" />
 
     <TextView
         android:id="@+id/playbackInfoTextView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="播放信息"
+        android:text="Playback Information"
         android:textSize="12sp"
         android:background="@drawable/info_background"
         android:padding="12dp" />
