@@ -10,6 +10,18 @@
 #include <string>
 #include <unordered_map>
 
+// Latency test configuration
+#define LATENCY_TEST_ENABLE 0
+
+#if LATENCY_TEST_ENABLE
+#define LATENCY_TEST_GPIO_FILE "/sys/class/gpio/gpio376/value"
+#define LATENCY_TEST_INTERVAL 100 // Toggle every 100 writes
+
+#include <cerrno>
+#include <fcntl.h>
+#include <unistd.h>
+#endif
+
 // AAudio Player implementation
 struct AudioPlayerState {
     AAudioStream* stream = nullptr;
@@ -29,9 +41,65 @@ struct AudioPlayerState {
     aaudio_performance_mode_t performanceMode = AAUDIO_PERFORMANCE_MODE_LOW_LATENCY;
     aaudio_sharing_mode_t sharingMode = AAUDIO_SHARING_MODE_SHARED;
     std::string audioFilePath = "/data/48k_2ch_16bit.wav";
+
+#if LATENCY_TEST_ENABLE
+    // Latency test variables
+    std::atomic<int> writeCounter{0};
+    std::atomic<bool> gpioState{false};
+    std::atomic<bool> muteAudio{false};
+    std::atomic<bool> latencyTestEnabled{false}; // 控制是否启用latency测试
+    int gpioFd = -1;                             // Pre-opened GPIO file descriptor
+#endif
 };
 
 static AudioPlayerState g_player;
+
+#if LATENCY_TEST_ENABLE
+// Optimized GPIO control functions for latency test
+static bool initGpio() {
+    g_player.gpioFd = open(LATENCY_TEST_GPIO_FILE, O_WRONLY);
+    if (g_player.gpioFd < 0) {
+        LOGE("Failed to open GPIO file: %s, errno: %d", LATENCY_TEST_GPIO_FILE, errno);
+        return false;
+    }
+    LOGI("GPIO file opened successfully: fd=%d", g_player.gpioFd);
+    return true;
+}
+
+static void closeGpio() {
+    if (g_player.gpioFd >= 0) {
+        close(g_player.gpioFd);
+        g_player.gpioFd = -1;
+    }
+}
+
+static inline bool writeGpioValue(int value) {
+    if (g_player.gpioFd < 0) {
+        return false;
+    }
+
+    char buf = value ? '1' : '0';
+    ssize_t result = write(g_player.gpioFd, &buf, 1);
+
+    if (result != 1) {
+        LOGE("Failed to write GPIO value: %d, result: %zd, errno: %d", value, result, errno);
+        return false;
+    }
+
+    return true;
+}
+
+static inline void toggleGpio() {
+    bool currentState = g_player.gpioState.load(std::memory_order_relaxed);
+    bool newState = !currentState;
+
+    if (writeGpioValue(newState ? 1 : 0)) {
+        g_player.gpioState.store(newState, std::memory_order_relaxed);
+        // Remove debug log in callback to reduce overhead
+        // LOGD("GPIO toggled to: %d", newState ? 1 : 0);
+    }
+}
+#endif
 
 // Java callback functions
 static void notifyPlaybackStarted() {
@@ -139,6 +207,34 @@ audioCallback(AAudioStream* stream, void* userData, void* audioData, int32_t num
         notifyPlaybackStopped();
         return AAUDIO_CALLBACK_RESULT_STOP;
     }
+
+#if LATENCY_TEST_ENABLE
+    // Latency test logic - only execute if enabled
+    if (g_player.latencyTestEnabled.load(std::memory_order_relaxed)) {
+        int currentCount = g_player.writeCounter.fetch_add(1);
+
+        if (currentCount % LATENCY_TEST_INTERVAL == 0) {
+            // Toggle GPIO every LATENCY_TEST_INTERVAL writes
+            toggleGpio();
+
+            // Toggle audio mute state
+            bool currentMuteState = g_player.muteAudio.load(std::memory_order_relaxed);
+            g_player.muteAudio.store(!currentMuteState, std::memory_order_relaxed);
+
+            // Reduce logging in callback for better performance
+            // Only log every 1000 intervals to avoid spam
+            if (currentCount % (LATENCY_TEST_INTERVAL * 1000) == 0) {
+                LOGD("Latency test: count=%d, gpio=%d, mute=%d", currentCount,
+                     g_player.gpioState.load(std::memory_order_relaxed) ? 1 : 0, !currentMuteState ? 1 : 0);
+            }
+        }
+
+        // Apply mute if enabled
+        if (g_player.muteAudio.load(std::memory_order_relaxed)) {
+            memset(audioData, 0, bytesToRead);
+        }
+    }
+#endif
 
     return AAUDIO_CALLBACK_RESULT_CONTINUE;
 }
@@ -326,6 +422,25 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_sta
         return JNI_FALSE;
     }
 
+#if LATENCY_TEST_ENABLE
+    // Initialize latency test
+    if (!initGpio()) {
+        LOGE("Failed to initialize GPIO for latency test - latency test DISABLED");
+        g_player.latencyTestEnabled.store(false);
+        // Continue without latency test functionality
+    } else {
+        // Reset latency test counters
+        g_player.writeCounter.store(0);
+        g_player.gpioState.store(false);
+        g_player.muteAudio.store(false);
+        g_player.latencyTestEnabled.store(true);
+
+        // Initialize GPIO to low state
+        writeGpioValue(0);
+        LOGI("Latency test initialized: GPIO=%s, interval=%d", LATENCY_TEST_GPIO_FILE, LATENCY_TEST_INTERVAL);
+    }
+#endif
+
     g_player.isPlaying.store(true);
     aaudio_result_t result = AAudioStream_requestStart(g_player.stream);
 
@@ -355,6 +470,12 @@ JNIEXPORT void JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_stopNat
     }
 
     g_player.waveFile.reset();
+
+#if LATENCY_TEST_ENABLE
+    // Close GPIO file descriptor
+    closeGpio();
+#endif
+
     notifyPlaybackStopped();
 }
 
@@ -370,6 +491,11 @@ JNIEXPORT void JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_release
     }
 
     g_player.waveFile.reset();
+
+#if LATENCY_TEST_ENABLE
+    // Close GPIO file descriptor
+    closeGpio();
+#endif
 
     // Clean up Java references
     if (g_player.playerInstance) {
