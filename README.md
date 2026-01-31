@@ -24,15 +24,17 @@ AAudio Player是一个专为Android平台设计的音频播放测试工具，使
 - **AAudioConfig**: 音频配置管理类，支持动态加载配置
 - **MainActivity**: 现代化主界面控制器，提供权限管理和用户交互
 - **WaveFile**: C++实现的WAV文件解析器，支持多种格式
-- **Native Engine**: C++14实现的AAudio播放引擎
+- **Native Engine**: C++实现的AAudio播放引擎
 
 ### 技术栈
 
-- **语言**: Kotlin + C++14
+- **语言**: Kotlin + C++
 - **音频API**: Android AAudio
-- **构建系统**: Gradle + CMake 3.22.1
-- **最低版本**: Android 8.1 (API 27)
+- **构建系统**: Gradle + CMake
+- **最低版本**: Android 12L (API 32)
 - **目标版本**: Android 15 (API 36)
+- **NDK版本**: 29.0.14206865
+- **Java版本**: Java 21
 
 ## 🎵 支持的音频场景
 
@@ -55,7 +57,7 @@ AAudio Player是一个专为Android平台设计的音频播放测试工具，使
 
 ### 系统要求
 
-- Android 8.1 (API 27) 或更高版本
+- Android 12L (API 32) 或更高版本
 - 支持AAudio的设备
 - 开发环境: Android Studio
 
@@ -69,7 +71,7 @@ AAudio Player是一个专为Android平台设计的音频播放测试工具，使
 
 1. **克隆项目**
    ```bash
-   git clone https://github.com/your-repo/AAudioPlayer.git
+   git clone https://github.com/kainan-tek/AAudioPlayer.git
    cd AAudioPlayer
    ```
 
@@ -97,6 +99,12 @@ AAudio Player是一个专为Android平台设计的音频播放测试工具，使
    - 应用启动时自动加载配置
    - 支持从外部文件动态加载配置
    - 可在运行时切换不同的音频场景
+
+### 界面功能
+
+- **状态显示**: 实时显示播放状态和音频参数
+- **配置选择**: 通过对话框选择不同的音频配置
+- **权限管理**: 自动检查和申请必要权限
 
 ## 🔧 配置文件
 
@@ -127,15 +135,27 @@ AAudio Player是一个专为Android平台设计的音频播放测试工具，使
 **Usage (使用场景):**
 - `AAUDIO_USAGE_MEDIA` - 媒体播放
 - `AAUDIO_USAGE_VOICE_COMMUNICATION` - 语音通话
+- `AAUDIO_USAGE_VOICE_COMMUNICATION_SIGNALLING` - 通话信令
 - `AAUDIO_USAGE_ALARM` - 闹钟
 - `AAUDIO_USAGE_NOTIFICATION` - 通知
+- `AAUDIO_USAGE_NOTIFICATION_RINGTONE` - 铃声
+- `AAUDIO_USAGE_NOTIFICATION_EVENT` - 通知事件
+- `AAUDIO_USAGE_ASSISTANCE_ACCESSIBILITY` - 辅助功能
+- `AAUDIO_USAGE_ASSISTANCE_NAVIGATION_GUIDANCE` - 导航语音
+- `AAUDIO_USAGE_ASSISTANCE_SONIFICATION` - 系统提示音
 - `AAUDIO_USAGE_GAME` - 游戏音频
+- `AAUDIO_USAGE_ASSISTANT` - 语音助手
 
-**Performance Mode:**
+**Content Type (内容类型):**
+- `AAUDIO_CONTENT_TYPE_MUSIC` - 音乐
+- `AAUDIO_CONTENT_TYPE_SPEECH` - 语音
+- `AAUDIO_CONTENT_TYPE_SONIFICATION` - 音效
+
+**Performance Mode (性能模式):**
 - `AAUDIO_PERFORMANCE_MODE_LOW_LATENCY` - 低延迟模式
 - `AAUDIO_PERFORMANCE_MODE_POWER_SAVING` - 省电模式
 
-**Sharing Mode:**
+**Sharing Mode (共享模式):**
 - `AAUDIO_SHARING_MODE_EXCLUSIVE` - 独占模式
 - `AAUDIO_SHARING_MODE_SHARED` - 共享模式
 
@@ -176,17 +196,49 @@ class AAudioPlayer {
 }
 ```
 
+### AAudioConfig 类
+```kotlin
+data class AAudioConfig(
+    val usage: String,                          // 使用场景
+    val contentType: String,                    // 内容类型
+    val performanceMode: String,                // 性能模式
+    val sharingMode: String,                    // 共享模式
+    val audioFilePath: String,                  // 音频文件路径
+    val description: String                     // 配置描述
+)
+```
+
 ## 🐛 故障排除
 
 ### 常见问题
-1. **播放失败** - 确认WAV文件格式支持，验证设备权限设置
-2. **权限问题** - `adb shell setenforce 0`
-3. **配置加载失败** - 检查JSON格式是否正确
+
+1. **播放失败**
+   - 确认WAV文件格式支持
+   - 验证设备权限设置
+   - 检查文件路径是否正确
+
+2. **权限问题**
+   - 手动授予存储权限
+   - 使用 `adb shell setenforce 0` 临时禁用SELinux
+
+3. **配置加载失败**
+   - 检查JSON格式是否正确
+   - 验证配置文件路径
+   - 查看日志输出
+
+4. **音频焦点问题**
+   - 确保没有其他应用占用音频
+   - 检查音频焦点申请是否成功
 
 ### 调试信息
 ```bash
 adb logcat -s AAudioPlayer MainActivity
 ```
+
+### 日志标签
+- `AAudioPlayer`: 播放器相关日志
+- `MainActivity`: 主界面相关日志
+- `AAudioConfig`: 配置相关日志
 
 ## 📊 性能指标
 
@@ -195,6 +247,13 @@ adb logcat -s AAudioPlayer MainActivity
 - **采样率**: 8kHz - 192kHz
 - **声道数**: 1-16声道
 - **位深度**: 8/16/24/32位
+- **支持格式**: PCM WAV文件
+
+## 🔗 相关项目
+
+- [AAudioRecorder](../AAudioRecorder/) - 配套的AAudio录音器项目
+- [AudioPlayer](../AudioPlayer/) - 基础音频播放器项目
+- [AudioRecorder](../AudioRecorder/) - 基础音频录制器项目
 
 ## 📄 许可证
 

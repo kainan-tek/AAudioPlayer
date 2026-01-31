@@ -5,6 +5,7 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.util.Log
+import com.example.aaudioplayer.common.AAudioConstants
 import com.example.aaudioplayer.config.AAudioConfig
 
 /**
@@ -64,8 +65,14 @@ class AAudioPlayer(context: Context) {
     init {
         // Initialize native layer, pass default configuration
         initializeNative(currentConfig.audioFilePath)
-        // Set default configuration
-        setNativeConfig(currentConfig.usage, currentConfig.contentType, currentConfig.performanceMode, currentConfig.sharingMode, currentConfig.audioFilePath)
+        // Set default configuration with integer values
+        setNativeConfig(
+            currentConfig.getUsageValue(),
+            currentConfig.getContentTypeValue(),
+            currentConfig.getPerformanceModeValue(),
+            currentConfig.getSharingModeValue(),
+            currentConfig.audioFilePath
+        )
     }
     
     /**
@@ -73,8 +80,8 @@ class AAudioPlayer(context: Context) {
      */
     private fun requestAudioFocus(): Boolean {
         val audioAttributes = AudioAttributes.Builder()
-            .setUsage(getAudioAttributesUsage())
-            .setContentType(getAudioAttributesContentType())
+            .setUsage(AAudioConstants.getUsageValue(currentConfig.usage))
+            .setContentType(AAudioConstants.getContentTypeValue(currentConfig.contentType))
             .build()
 
         audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
@@ -97,55 +104,41 @@ class AAudioPlayer(context: Context) {
         }
     }
 
-    /**
-     * Get AudioAttributes Usage based on configuration
-     */
-    private fun getAudioAttributesUsage(): Int {
-        return when (currentConfig.usage) {
-            "AAUDIO_USAGE_MEDIA" -> AudioAttributes.USAGE_MEDIA
-            "AAUDIO_USAGE_VOICE_COMMUNICATION" -> AudioAttributes.USAGE_VOICE_COMMUNICATION
-            "AAUDIO_USAGE_VOICE_COMMUNICATION_SIGNALLING" -> AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING
-            "AAUDIO_USAGE_ALARM" -> AudioAttributes.USAGE_ALARM
-            "AAUDIO_USAGE_NOTIFICATION" -> AudioAttributes.USAGE_NOTIFICATION
-            "AAUDIO_USAGE_NOTIFICATION_RINGTONE" -> AudioAttributes.USAGE_NOTIFICATION_RINGTONE
-            "AAUDIO_USAGE_NOTIFICATION_EVENT" -> AudioAttributes.USAGE_NOTIFICATION_EVENT
-            "AAUDIO_USAGE_ASSISTANCE_ACCESSIBILITY" -> AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY
-            "AAUDIO_USAGE_ASSISTANCE_NAVIGATION_GUIDANCE" -> AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE
-            "AAUDIO_USAGE_ASSISTANCE_SONIFICATION" -> AudioAttributes.USAGE_ASSISTANCE_SONIFICATION
-            "AAUDIO_USAGE_GAME" -> AudioAttributes.USAGE_GAME
-            "AAUDIO_USAGE_ASSISTANT" -> AudioAttributes.USAGE_ASSISTANT
-            else -> AudioAttributes.USAGE_MEDIA
-        }
-    }
-
-    /**
-     * Get AudioAttributes ContentType based on configuration
-     */
-    private fun getAudioAttributesContentType(): Int {
-        return when (currentConfig.contentType) {
-            "AAUDIO_CONTENT_TYPE_SPEECH" -> AudioAttributes.CONTENT_TYPE_SPEECH
-            "AAUDIO_CONTENT_TYPE_MUSIC" -> AudioAttributes.CONTENT_TYPE_MUSIC
-            "AAUDIO_CONTENT_TYPE_MOVIE" -> AudioAttributes.CONTENT_TYPE_MOVIE
-            "AAUDIO_CONTENT_TYPE_SONIFICATION" -> AudioAttributes.CONTENT_TYPE_SONIFICATION
-            else -> AudioAttributes.CONTENT_TYPE_MUSIC
-        }
-    }
-    
     fun setPlaybackListener(listener: PlaybackListener) {
         this.listener = listener
     }
     
     fun setAudioConfig(config: AAudioConfig) {
+        if (isPlaying) {
+            Log.w(TAG, "Cannot change config while playing")
+            return
+        }
+        
         currentConfig = config
         Log.i(TAG, "Configuration updated: ${config.description}")
         
-        // Directly update native layer configuration, no need to reinitialize
-        setNativeConfig(config.usage, config.contentType, config.performanceMode, config.sharingMode, config.audioFilePath)
+        // Update native layer configuration with integer values
+        setNativeConfig(
+            config.getUsageValue(),
+            config.getContentTypeValue(),
+            config.getPerformanceModeValue(),
+            config.getSharingModeValue(),
+            config.audioFilePath
+        )
     }
     
     fun play(): Boolean {
         if (isPlaying) {
             Log.w(TAG, "Already playing")
+            listener?.onPlaybackError("Already playing")
+            return false
+        }
+        
+        // Validate audio file path
+        if (currentConfig.audioFilePath.isBlank()) {
+            val error = "Invalid audio file path: empty or blank"
+            Log.e(TAG, error)
+            listener?.onPlaybackError(error)
             return false
         }
         
@@ -158,16 +151,27 @@ class AAudioPlayer(context: Context) {
             return false
         }
         
+        Log.d(TAG, "Starting playback with config: ${currentConfig.description}")
+        
         val result = startNativePlayback()
         if (!result) {
-            Log.e(TAG, "Playback start failed")
+            val error = "Playback start failed - check audio file and configuration"
+            Log.e(TAG, error)
             abandonAudioFocus() // Release focus on playback failure
-            listener?.onPlaybackError("Playback start failed")
+            listener?.onPlaybackError(error)
         }
         return result
     }
     
     fun stop(): Boolean {
+        if (!isPlaying) {
+            Log.w(TAG, "Not currently playing")
+            listener?.onPlaybackError("Not currently playing")
+            return false
+        }
+        
+        Log.d(TAG, "Stopping playback")
+        
         stopNativePlayback()
         abandonAudioFocus() // Release focus when stopping playback
         // Status update will be handled through native callback
@@ -179,8 +183,15 @@ class AAudioPlayer(context: Context) {
     }
     
     fun release() {
-        stop()
-        releaseNative()
+        if (isPlaying) {
+            stop()
+        }
+        try {
+            releaseNative()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error releasing native resources", e)
+        }
+        Log.d(TAG, "AAudioPlayer resources released")
     }
     
     // Native methods
@@ -188,7 +199,7 @@ class AAudioPlayer(context: Context) {
     private external fun startNativePlayback(): Boolean
     private external fun stopNativePlayback()
     private external fun releaseNative()
-    private external fun setNativeConfig(usage: String, contentType: String, performanceMode: String, sharingMode: String, filePath: String): Boolean
+    private external fun setNativeConfig(usage: Int, contentType: Int, performanceMode: Int, sharingMode: Int, filePath: String): Boolean
     
     // Callback methods called from Native layer
     @Suppress("unused")

@@ -66,9 +66,7 @@ class MainActivity : AppCompatActivity() {
         stopButton.setOnClickListener { stopPlayback() }
         configButton.setOnClickListener { showConfigDialog() }
         
-        // Initial state
-        playButton.isEnabled = true
-        stopButton.isEnabled = false
+        updateButtonStates(false)
         statusText.text = "Ready to play"
     }
 
@@ -78,9 +76,7 @@ class MainActivity : AppCompatActivity() {
             @SuppressLint("SetTextI18n")
             override fun onPlaybackStarted() {
                 runOnUiThread {
-                    playButton.isEnabled = false
-                    stopButton.isEnabled = true
-                    configButton.isEnabled = false
+                    updateButtonStates(true)
                     statusText.text = "Playing..."
                     updatePlaybackInfo()
                 }
@@ -89,9 +85,7 @@ class MainActivity : AppCompatActivity() {
             @SuppressLint("SetTextI18n")
             override fun onPlaybackStopped() {
                 runOnUiThread {
-                    playButton.isEnabled = true
-                    stopButton.isEnabled = false
-                    configButton.isEnabled = true
+                    updateButtonStates(false)
                     statusText.text = "Playback stopped"
                     updatePlaybackInfo()
                 }
@@ -100,14 +94,18 @@ class MainActivity : AppCompatActivity() {
             @SuppressLint("SetTextI18n")
             override fun onPlaybackError(error: String) {
                 runOnUiThread {
-                    playButton.isEnabled = true
-                    stopButton.isEnabled = false
-                    configButton.isEnabled = true
+                    updateButtonStates(false)
                     statusText.text = "Error: $error"
                     Toast.makeText(this@MainActivity, error, Toast.LENGTH_SHORT).show()
                 }
             }
         })
+    }
+
+    private fun updateButtonStates(isActive: Boolean) {
+        playButton.isEnabled = !isActive
+        stopButton.isEnabled = isActive
+        configButton.isEnabled = !isActive
     }
 
     @SuppressLint("SetTextI18n")
@@ -123,9 +121,8 @@ class MainActivity : AppCompatActivity() {
             currentConfig = availableConfigs[0]
             audioPlayer.setAudioConfig(currentConfig!!)
             updatePlaybackInfo()
-            Log.i(TAG, "Loaded ${availableConfigs.size} playback configurations")
+            Log.i(TAG, "Loaded ${availableConfigs.size} configurations")
         } else {
-            Log.e(TAG, "Failed to load playback configurations")
             statusText.text = "Configuration load failed"
             playButton.isEnabled = false
             configButton.isEnabled = false
@@ -133,57 +130,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkPermissions() {
-        if (!hasAudioPermissions()) {
-            requestAudioPermissions()
-        } else {
-            onPermissionsGranted()
-        }
-    }
-
-    private fun hasAudioPermissions(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+ uses READ_MEDIA_AUDIO
-            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
-        } else {
-            // Android 12 and below use READ_EXTERNAL_STORAGE
-            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-        }
-    }
-
-    private fun requestAudioPermissions() {
         val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             Manifest.permission.READ_MEDIA_AUDIO
         } else {
             Manifest.permission.READ_EXTERNAL_STORAGE
         }
         
-        ActivityCompat.requestPermissions(this, arrayOf(permission), PERMISSION_REQUEST_CODE)
+        if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(permission), PERMISSION_REQUEST_CODE)
+        }
     }
 
     @SuppressLint("SetTextI18n")
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         
         if (requestCode == PERMISSION_REQUEST_CODE) {
-            val allGranted = grantResults.all { it == PackageManager.PERMISSION_GRANTED }
-            
-            if (allGranted) {
-                onPermissionsGranted()
+            if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                Log.i(TAG, "Permissions granted")
             } else {
                 Toast.makeText(this, "Storage permission required to play audio files", Toast.LENGTH_LONG).show()
                 statusText.text = "Permission denied"
             }
         }
-    }
-
-    @SuppressLint("SetTextI18n")
-    private fun onPermissionsGranted() {
-        statusText.text = "Ready to play"
-        Log.i(TAG, "All permissions granted")
     }
 
     @SuppressLint("SetTextI18n")
@@ -193,14 +162,8 @@ class MainActivity : AppCompatActivity() {
             return
         }
         
-        if (!hasAudioPermissions()) {
-            requestAudioPermissions()
-            return
-        }
-        
         statusText.text = "Preparing to play..."
         audioPlayer.play()
-        Log.i(TAG, "Playback started")
     }
 
     @SuppressLint("SetTextI18n")
@@ -212,13 +175,12 @@ class MainActivity : AppCompatActivity() {
         
         statusText.text = "Stopping..."
         audioPlayer.stop()
-        Log.i(TAG, "Playback stopped")
     }
 
     @SuppressLint("SetTextI18n")
     private fun showConfigDialog() {
         if (availableConfigs.isEmpty()) {
-            Toast.makeText(this, "No available playback configurations", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "No available configurations", Toast.LENGTH_SHORT).show()
             return
         }
         
@@ -226,15 +188,12 @@ class MainActivity : AppCompatActivity() {
         val currentIndex = availableConfigs.indexOf(currentConfig)
         
         AlertDialog.Builder(this)
-            .setTitle("Select Playback Configuration")
+            .setTitle("Select Configuration")
             .setSingleChoiceItems(configNames, currentIndex) { dialog, which ->
                 currentConfig = availableConfigs[which]
                 audioPlayer.setAudioConfig(currentConfig!!)
                 updatePlaybackInfo()
-                
                 Toast.makeText(this, "Switched to: ${currentConfig!!.description}", Toast.LENGTH_SHORT).show()
-                Log.i(TAG, "Config changed to: ${currentConfig!!.description}")
-                
                 dialog.dismiss()
             }
             .setNegativeButton("Cancel", null)
@@ -257,6 +216,5 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         audioPlayer.release()
-        Log.i(TAG, "MainActivity destroyed")
     }
 }

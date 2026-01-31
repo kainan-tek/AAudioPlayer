@@ -131,56 +131,6 @@ static void notifyPlaybackError(const std::string& error) {
     }
 }
 
-// Enumeration mapping
-static const std::unordered_map<std::string, aaudio_usage_t> USAGE_MAP = {
-    {"AAUDIO_USAGE_MEDIA", AAUDIO_USAGE_MEDIA},
-    {"AAUDIO_USAGE_VOICE_COMMUNICATION", AAUDIO_USAGE_VOICE_COMMUNICATION},
-    {"AAUDIO_USAGE_VOICE_COMMUNICATION_SIGNALLING", AAUDIO_USAGE_VOICE_COMMUNICATION_SIGNALLING},
-    {"AAUDIO_USAGE_ALARM", AAUDIO_USAGE_ALARM},
-    {"AAUDIO_USAGE_NOTIFICATION", AAUDIO_USAGE_NOTIFICATION},
-    {"AAUDIO_USAGE_NOTIFICATION_RINGTONE", AAUDIO_USAGE_NOTIFICATION_RINGTONE},
-    {"AAUDIO_USAGE_NOTIFICATION_EVENT", AAUDIO_USAGE_NOTIFICATION_EVENT},
-    {"AAUDIO_USAGE_ASSISTANCE_ACCESSIBILITY", AAUDIO_USAGE_ASSISTANCE_ACCESSIBILITY},
-    {"AAUDIO_USAGE_ASSISTANCE_NAVIGATION_GUIDANCE", AAUDIO_USAGE_ASSISTANCE_NAVIGATION_GUIDANCE},
-    {"AAUDIO_USAGE_ASSISTANCE_SONIFICATION", AAUDIO_USAGE_ASSISTANCE_SONIFICATION},
-    {"AAUDIO_USAGE_GAME", AAUDIO_USAGE_GAME},
-    {"AAUDIO_USAGE_ASSISTANT", AAUDIO_USAGE_ASSISTANT}};
-
-static const std::unordered_map<std::string, aaudio_content_type_t> CONTENT_TYPE_MAP = {
-    {"AAUDIO_CONTENT_TYPE_SPEECH", AAUDIO_CONTENT_TYPE_SPEECH},
-    {"AAUDIO_CONTENT_TYPE_MUSIC", AAUDIO_CONTENT_TYPE_MUSIC},
-    {"AAUDIO_CONTENT_TYPE_MOVIE", AAUDIO_CONTENT_TYPE_MOVIE},
-    {"AAUDIO_CONTENT_TYPE_SONIFICATION", AAUDIO_CONTENT_TYPE_SONIFICATION}};
-
-// Enumeration lookup functions
-static aaudio_usage_t getUsageFromString(const std::string& usage) {
-    auto it = USAGE_MAP.find(usage);
-    return (it != USAGE_MAP.end()) ? it->second : AAUDIO_USAGE_MEDIA;
-}
-
-static aaudio_content_type_t getContentTypeFromString(const std::string& contentType) {
-    auto it = CONTENT_TYPE_MAP.find(contentType);
-    return (it != CONTENT_TYPE_MAP.end()) ? it->second : AAUDIO_CONTENT_TYPE_MUSIC;
-}
-
-static aaudio_performance_mode_t getPerformanceModeFromString(const std::string& performanceMode) {
-    if (performanceMode == "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY") {
-        return AAUDIO_PERFORMANCE_MODE_LOW_LATENCY;
-    } else if (performanceMode == "AAUDIO_PERFORMANCE_MODE_POWER_SAVING") {
-        return AAUDIO_PERFORMANCE_MODE_POWER_SAVING;
-    }
-    return AAUDIO_PERFORMANCE_MODE_LOW_LATENCY; // Default low latency
-}
-
-static aaudio_sharing_mode_t getSharingModeFromString(const std::string& sharingMode) {
-    if (sharingMode == "AAUDIO_SHARING_MODE_EXCLUSIVE") {
-        return AAUDIO_SHARING_MODE_EXCLUSIVE;
-    } else if (sharingMode == "AAUDIO_SHARING_MODE_SHARED") {
-        return AAUDIO_SHARING_MODE_SHARED;
-    }
-    return AAUDIO_SHARING_MODE_SHARED; // Default shared
-}
-
 // Audio callback
 static aaudio_data_callback_result_t
 audioCallback(AAudioStream* stream, void* userData, void* audioData, int32_t numFrames) {
@@ -358,37 +308,18 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_ini
 
 JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_setNativeConfig(JNIEnv* env,
                                                                                              jobject thiz,
-                                                                                             jstring usage,
-                                                                                             jstring contentType,
-                                                                                             jstring performanceMode,
-                                                                                             jstring sharingMode,
+                                                                                             jint usage,
+                                                                                             jint contentType,
+                                                                                             jint performanceMode,
+                                                                                             jint sharingMode,
                                                                                              jstring filePath) {
     LOGI("setNativeConfig");
 
-    // Update configuration parameters
-    if (usage) {
-        const char* usageStr = env->GetStringUTFChars(usage, nullptr);
-        g_player.usage = getUsageFromString(std::string(usageStr));
-        env->ReleaseStringUTFChars(usage, usageStr);
-    }
-
-    if (contentType) {
-        const char* contentTypeStr = env->GetStringUTFChars(contentType, nullptr);
-        g_player.contentType = getContentTypeFromString(std::string(contentTypeStr));
-        env->ReleaseStringUTFChars(contentType, contentTypeStr);
-    }
-
-    if (performanceMode) {
-        const char* performanceModeStr = env->GetStringUTFChars(performanceMode, nullptr);
-        g_player.performanceMode = getPerformanceModeFromString(std::string(performanceModeStr));
-        env->ReleaseStringUTFChars(performanceMode, performanceModeStr);
-    }
-
-    if (sharingMode) {
-        const char* sharingModeStr = env->GetStringUTFChars(sharingMode, nullptr);
-        g_player.sharingMode = getSharingModeFromString(std::string(sharingModeStr));
-        env->ReleaseStringUTFChars(sharingMode, sharingModeStr);
-    }
+    // Update configuration parameters - direct integer assignment
+    g_player.usage = static_cast<aaudio_usage_t>(usage);
+    g_player.contentType = static_cast<aaudio_content_type_t>(contentType);
+    g_player.performanceMode = static_cast<aaudio_performance_mode_t>(performanceMode);
+    g_player.sharingMode = static_cast<aaudio_sharing_mode_t>(sharingMode);
 
     if (filePath) {
         const char* path = env->GetStringUTFChars(filePath, nullptr);
@@ -396,8 +327,9 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_set
         env->ReleaseStringUTFChars(filePath, path);
     }
 
-    LOGI("Config updated: usage=%d, contentType=%d, performanceMode=%d, sharingMode=%d, file=%s", g_player.usage,
-         g_player.contentType, g_player.performanceMode, g_player.sharingMode, g_player.audioFilePath.c_str());
+    LOGI("Config updated: usage=%d, contentType=%d, performanceMode=%d, sharingMode=%d, file=%s", 
+         g_player.usage, g_player.contentType, g_player.performanceMode, g_player.sharingMode, 
+         g_player.audioFilePath.c_str());
 
     return JNI_TRUE;
 }
