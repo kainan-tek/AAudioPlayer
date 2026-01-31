@@ -9,7 +9,7 @@ import com.example.aaudioplayer.common.AAudioConstants
 import com.example.aaudioplayer.config.AAudioConfig
 
 /**
- * Simplified AAudio Player - supports audio focus management
+ * AAudio Player - supports audio focus management
  */
 class AAudioPlayer(context: Context) {
     companion object {
@@ -67,10 +67,10 @@ class AAudioPlayer(context: Context) {
         initializeNative(currentConfig.audioFilePath)
         // Set default configuration with integer values
         setNativeConfig(
-            currentConfig.getUsageValue(),
-            currentConfig.getContentTypeValue(),
-            currentConfig.getPerformanceModeValue(),
-            currentConfig.getSharingModeValue(),
+            AAudioConstants.getUsage(currentConfig.usage),
+            AAudioConstants.getContentType(currentConfig.contentType),
+            AAudioConstants.getPerformanceMode(currentConfig.performanceMode),
+            AAudioConstants.getSharingMode(currentConfig.sharingMode),
             currentConfig.audioFilePath
         )
     }
@@ -80,8 +80,8 @@ class AAudioPlayer(context: Context) {
      */
     private fun requestAudioFocus(): Boolean {
         val audioAttributes = AudioAttributes.Builder()
-            .setUsage(AAudioConstants.getUsageValue(currentConfig.usage))
-            .setContentType(AAudioConstants.getContentTypeValue(currentConfig.contentType))
+            .setUsage(AAudioConstants.getUsage(currentConfig.usage))
+            .setContentType(AAudioConstants.getContentType(currentConfig.contentType))
             .build()
 
         audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
@@ -119,11 +119,11 @@ class AAudioPlayer(context: Context) {
         
         // Update native layer configuration with integer values
         setNativeConfig(
-            config.getUsageValue(),
-            config.getContentTypeValue(),
-            config.getPerformanceModeValue(),
-            config.getSharingModeValue(),
-            config.audioFilePath
+            AAudioConstants.getUsage(currentConfig.usage),
+            AAudioConstants.getContentType(currentConfig.contentType),
+            AAudioConstants.getPerformanceMode(currentConfig.performanceMode),
+            AAudioConstants.getSharingMode(currentConfig.sharingMode),
+            currentConfig.audioFilePath
         )
     }
     

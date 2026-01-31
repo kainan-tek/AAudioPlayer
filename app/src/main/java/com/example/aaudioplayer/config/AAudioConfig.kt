@@ -10,34 +10,13 @@ import java.io.File
  * AAudio playback configuration data class - optimized with constants
  */
 data class AAudioConfig(
-    val usage: String = AAudioConstants.USAGE_MEDIA,
-    val performanceMode: String = AAudioConstants.PERFORMANCE_MODE_POWER_SAVING,
-    val sharingMode: String = AAudioConstants.SHARING_MODE_SHARED, 
-    val contentType: String = AAudioConstants.CONTENT_TYPE_MUSIC,
+    val usage: String = "AAUDIO_USAGE_MEDIA",
+    val performanceMode: String = "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
+    val sharingMode: String = "AAUDIO_SHARING_MODE_SHARED", 
+    val contentType: String = "AAUDIO_CONTENT_TYPE_MUSIC",
     val audioFilePath: String = AAudioConstants.DEFAULT_AUDIO_FILE,
     val description: String = "Default Configuration"
 ) {
-    
-    /**
-     * Get usage integer value
-     */
-    fun getUsageValue(): Int = AAudioConstants.getUsageValue(usage)
-    
-    /**
-     * Get content type integer value
-     */
-    fun getContentTypeValue(): Int = AAudioConstants.getContentTypeValue(contentType)
-    
-    /**
-     * Get performance mode integer value
-     */
-    fun getPerformanceModeValue(): Int = AAudioConstants.getPerformanceModeValue(performanceMode)
-    
-    /**
-     * Get sharing mode integer value
-     */
-    fun getSharingModeValue(): Int = AAudioConstants.getSharingModeValue(sharingMode)
-    
     companion object {
         private const val TAG = "AAudioConfig"
         
@@ -63,10 +42,10 @@ data class AAudioConfig(
             return (0 until configsArray.length()).map { i ->
                 val config = configsArray.getJSONObject(i)
                 AAudioConfig(
-                    usage = config.optString("usage", AAudioConstants.USAGE_MEDIA),
-                    performanceMode = config.optString("performanceMode", AAudioConstants.PERFORMANCE_MODE_LOW_LATENCY),
-                    sharingMode = config.optString("sharingMode", AAudioConstants.SHARING_MODE_SHARED),
-                    contentType = config.optString("contentType", AAudioConstants.CONTENT_TYPE_MUSIC),
+                    usage = config.optString("usage", "AAUDIO_USAGE_MEDIA"),
+                    performanceMode = config.optString("performanceMode", "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY"),
+                    sharingMode = config.optString("sharingMode", "AAUDIO_SHARING_MODE_SHARED"),
+                    contentType = config.optString("contentType", "AAUDIO_CONTENT_TYPE_MUSIC"),
                     audioFilePath = config.optString("audioFilePath", AAudioConstants.DEFAULT_AUDIO_FILE),
                     description = config.optString("description", "Custom Configuration")
                 )
@@ -74,14 +53,13 @@ data class AAudioConfig(
         }
         
         private fun getDefaultConfigs(): List<AAudioConfig> {
-            // 直接返回硬编码的emergency配置，不再重复尝试读取assets
             Log.w(TAG, "Using hardcoded emergency configuration")
             return listOf(
                 AAudioConfig(
-                    usage = AAudioConstants.USAGE_MEDIA,
-                    performanceMode = AAudioConstants.PERFORMANCE_MODE_POWER_SAVING,
-                    sharingMode = AAudioConstants.SHARING_MODE_SHARED,
-                    contentType = AAudioConstants.CONTENT_TYPE_MUSIC,
+                    usage = "AAUDIO_USAGE_MEDIA",
+                    performanceMode = "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
+                    sharingMode = "AAUDIO_SHARING_MODE_SHARED",
+                    contentType = "AAUDIO_CONTENT_TYPE_MUSIC",
                     audioFilePath = AAudioConstants.DEFAULT_AUDIO_FILE,
                     description = "Emergency Fallback - Media Playback"
                 )
