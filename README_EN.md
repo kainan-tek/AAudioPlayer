@@ -255,9 +255,9 @@ adb logcat -s AAudioPlayer MainActivity
 
 ## 🔗 Related Projects
 
-- [AAudioRecorder](../AAudioRecorder/) - Companion AAudio recorder project
-- [AudioPlayer](../AudioPlayer/) - Basic audio player project
-- [AudioRecorder](../AudioRecorder/) - Basic audio recorder project
+- [**AAudioRecorder**](https://github.com/kainan-tek/AAudioRecorder) - Companion AAudio recorder project
+- [**AudioPlayer**](https://github.com/kainan-tek/AudioPlayer) - Basic audio player project
+- [**AudioRecorder**](https://github.com/kainan-tek/AudioRecorder) - Basic audio recorder project
 
 ## 📄 License
 
