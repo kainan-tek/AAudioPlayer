@@ -43,7 +43,7 @@ data class AAudioConfig(
                 val config = configsArray.getJSONObject(i)
                 AAudioConfig(
                     usage = config.optString("usage", "AAUDIO_USAGE_MEDIA"),
-                    performanceMode = config.optString("performanceMode", "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY"),
+                    performanceMode = config.optString("performanceMode", "AAUDIO_PERFORMANCE_MODE_POWER_SAVING"),
                     sharingMode = config.optString("sharingMode", "AAUDIO_SHARING_MODE_SHARED"),
                     contentType = config.optString("contentType", "AAUDIO_CONTENT_TYPE_MUSIC"),
                     audioFilePath = config.optString("audioFilePath", AAudioConstants.DEFAULT_AUDIO_FILE),

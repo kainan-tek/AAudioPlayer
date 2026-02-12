@@ -134,9 +134,16 @@ class AAudioPlayer(context: Context) {
             return false
         }
         
-        // Validate audio file path
-        if (currentConfig.audioFilePath.isBlank()) {
+        // Validate audio file path (basic checks before native layer)
+        val audioPath = currentConfig.audioFilePath
+        if (audioPath.isBlank()) {
             val error = "Invalid audio file path: empty or blank"
+            Log.e(TAG, error)
+            listener?.onPlaybackError(error)
+            return false
+        }
+        if (!audioPath.lowercase().endsWith(".wav")) {
+            val error = "Invalid audio file path: must end with .wav"
             Log.e(TAG, error)
             listener?.onPlaybackError(error)
             return false

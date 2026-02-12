@@ -1,5 +1,7 @@
 # AAudio Player
 
+中文 | [English](README_EN.md)
+
 一个基于Android AAudio API的高性能音频播放器测试程序，支持12种音频使用场景配置和WAV文件播放。
 
 ## 📋 项目概述

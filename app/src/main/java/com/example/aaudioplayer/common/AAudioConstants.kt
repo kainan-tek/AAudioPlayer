@@ -10,7 +10,6 @@ object AAudioConstants {
     // Configuration file paths
     const val CONFIG_FILE_PATH = "/data/aaudio_player_configs.json"
     const val ASSETS_CONFIG_FILE = "aaudio_player_configs.json"
-    
     // Default audio file paths
     const val DEFAULT_AUDIO_FILE = "/data/48k_2ch_16bit.wav"
 

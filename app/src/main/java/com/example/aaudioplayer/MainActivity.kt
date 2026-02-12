@@ -90,7 +90,7 @@ class MainActivity : AppCompatActivity() {
             override fun onPlaybackStarted() {
                 runOnUiThread {
                     updateButtonStates(true)
-                    statusText.text = "Playing..."
+                    statusText.text = "Playback in progress"
                     updatePlaybackInfo()
                 }
             }
@@ -109,7 +109,7 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread {
                     updateButtonStates(false)
                     statusText.text = "Error: $error"
-                    Toast.makeText(this@MainActivity, "Playback error: $error", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, "Error: $error", Toast.LENGTH_SHORT).show()
                 }
             }
         })
@@ -136,9 +136,9 @@ class MainActivity : AppCompatActivity() {
             setupConfigSpinner()
             updatePlaybackInfo()
             statusText.text = "Ready to play"
-            Log.i(TAG, "Loaded ${availableConfigs.size} configurations")
+            Log.i(TAG, "Loaded ${availableConfigs.size} playback configurations")
         } else {
-            statusText.text = "Configuration load failed"
+            statusText.text = "Playback configuration load failed"
             playButton.isEnabled = false
         }
     }
@@ -148,10 +148,10 @@ class MainActivity : AppCompatActivity() {
      */
     private fun setupConfigSpinner() {
         val configs = availableConfigs
-        Log.d(TAG, "Setting up config spinner with ${configs.size} configurations")
+        Log.d(TAG, "Setting up playback config spinner with ${configs.size} configurations")
         
         if (configs.isEmpty()) {
-            Log.w(TAG, "No configurations available for spinner")
+            Log.w(TAG, "No playback configurations available for spinner")
             return
         }
         
@@ -167,7 +167,7 @@ class MainActivity : AppCompatActivity() {
             val index = configs.indexOfFirst { config -> config.description == it.description }
             if (index >= 0) {
                 configSpinner.setSelection(index)
-                Log.d(TAG, "Set initial spinner selection to index $index: ${it.description}")
+                Log.d(TAG, "Set initial playback spinner selection to index $index: ${it.description}")
             }
         }
         
@@ -175,26 +175,26 @@ class MainActivity : AppCompatActivity() {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 if (!isSpinnerInitialized) {
                     isSpinnerInitialized = true
-                    Log.d(TAG, "Spinner initialized, skipping first selection")
+                    Log.d(TAG, "Playback spinner initialized, skipping first selection")
                     return
                 }
                 
                 val selectedConfig = configs[position]
-                Log.d(TAG, "Config selected: ${selectedConfig.description}")
+                Log.d(TAG, "Playback config selected: ${selectedConfig.description}")
                 currentConfig = selectedConfig
                 audioPlayer.setAudioConfig(selectedConfig)
                 updatePlaybackInfo()
-                showToast("Switched to: ${selectedConfig.description}")
+                showToast("Switched to playback config: ${selectedConfig.description}")
             }
             
             override fun onNothingSelected(parent: AdapterView<*>?) {
-                Log.d(TAG, "Nothing selected in spinner")
+                Log.d(TAG, "Nothing selected in playback spinner")
             }
         }
         
         // Add long press listener to reload configurations
         configSpinner.setOnLongClickListener {
-            Log.d(TAG, "Long press detected on spinner")
+            Log.d(TAG, "Long press detected on playback spinner")
             reloadConfigurations()
             true
         }
