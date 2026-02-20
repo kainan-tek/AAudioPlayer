@@ -18,7 +18,8 @@
         android:icon="@mipmap/ic_launcher"
         android:label="AAudioPlayer"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:theme="@style/Theme.AAudioPlayer">
+        android:theme="@style/Theme.AAudioPlayer"
+        android:requestLegacyExternalStorage="true">
         
         <activity
             android:name=".MainActivity"

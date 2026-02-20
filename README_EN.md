@@ -66,8 +66,8 @@ AAudio Player is an audio playback test tool designed for the Android platform, 
 ### Permission Requirements
 
 - `MODIFY_AUDIO_SETTINGS`: Audio playback control
-- `READ_MEDIA_AUDIO` (API 33+): Read audio files
-- `READ_EXTERNAL_STORAGE` (API ≤32): Read external storage
+- `READ_MEDIA_AUDIO`: Read audio files permission (Android 13+)
+- `READ_EXTERNAL_STORAGE`: Read external storage permission (Android 12 and below)
 
 ### Installation Steps
 

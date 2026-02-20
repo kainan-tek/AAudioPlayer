@@ -108,8 +108,7 @@ class MainActivity : AppCompatActivity() {
             override fun onPlaybackError(error: String) {
                 runOnUiThread {
                     updateButtonStates(false)
-                    statusText.text = "Error: $error"
-                    Toast.makeText(this@MainActivity, "Error: $error", Toast.LENGTH_SHORT).show()
+                    handleError(error)
                 }
             }
         })
@@ -216,35 +215,43 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Get required permissions based on Android version
+     */
+    private fun getRequiredPermissions(): Array<String> {
+        return when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
+                arrayOf(Manifest.permission.READ_MEDIA_AUDIO)
+            }
+            else -> {
+                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+        }
+    }
+
     private fun hasAudioPermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13 (API 33) and above use READ_MEDIA_AUDIO
-            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED
-        } else {
-            // Android 12 (API 32) and below use READ_EXTERNAL_STORAGE
-            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+        return getRequiredPermissions().all {
+            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
         }
     }
 
     private fun requestAudioPermission() {
-        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            Manifest.permission.READ_MEDIA_AUDIO
-        } else {
-            Manifest.permission.READ_EXTERNAL_STORAGE
+        val permissions = getRequiredPermissions()
+        val deniedPermissions = permissions.filter {
+            ActivityCompat.shouldShowRequestPermissionRationale(this, it)
         }
         
-        if (ActivityCompat.shouldShowRequestPermissionRationale(this, permission)) {
-            // Show explanation dialog
+        if (deniedPermissions.isNotEmpty()) {
             AlertDialog.Builder(this)
                 .setTitle("Permission Required")
                 .setMessage("This app needs audio file access permission to play audio files.")
                 .setPositiveButton("Grant") { _, _ ->
-                    ActivityCompat.requestPermissions(this, arrayOf(permission), PERMISSION_REQUEST_CODE)
+                    ActivityCompat.requestPermissions(this, permissions, PERMISSION_REQUEST_CODE)
                 }
                 .setNegativeButton("Cancel", null)
                 .show()
         } else {
-            ActivityCompat.requestPermissions(this, arrayOf(permission), PERMISSION_REQUEST_CODE)
+            ActivityCompat.requestPermissions(this, permissions, PERMISSION_REQUEST_CODE)
         }
     }
 
@@ -256,10 +263,12 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         
         if (requestCode == PERMISSION_REQUEST_CODE && grantResults.isNotEmpty()) {
-            val message = if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            val allGranted = grantResults.all { it == PackageManager.PERMISSION_GRANTED }
+            val message = if (allGranted) {
                 "Permission granted"
             } else {
-                "Storage permission required to play audio files"
+                val deniedCount = grantResults.count { it != PackageManager.PERMISSION_GRANTED }
+                "Storage permission required ($deniedCount permission(s) denied)"
             }
             showToast(message)
         }
@@ -302,6 +311,61 @@ class MainActivity : AppCompatActivity() {
 
     private fun showToast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+    
+    /**
+     * Handle audio playback errors with user-friendly messages
+     */
+    @SuppressLint("SetTextI18n")
+    private fun handleError(error: String) {
+        Log.e(TAG, "Audio playback error: $error")
+        
+        val userMessage = getUserFriendlyErrorMessage(error)
+        
+        AlertDialog.Builder(this)
+            .setTitle("Playback Error")
+            .setMessage(userMessage)
+            .setPositiveButton("OK") { dialog, _ ->
+                dialog.dismiss()
+                statusText.setText(R.string.status_ready)
+            }
+            .setCancelable(true)
+            .setOnCancelListener {
+                statusText.setText(R.string.status_ready)
+            }
+            .show()
+        
+        statusText.text = "Error: $userMessage"
+    }
+    
+    /**
+     * Convert technical error message to user-friendly message
+     */
+    private fun getUserFriendlyErrorMessage(error: String): String {
+        return when {
+            error.startsWith("[FILE]", ignoreCase = true) -> 
+                "Unable to open audio file. The file may be corrupted or inaccessible."
+            
+            error.startsWith("[STREAM]", ignoreCase = true) -> 
+                "Audio system initialization failed. Please try again."
+            
+            error.startsWith("[PERMISSION]", ignoreCase = true) -> 
+                "Audio file access permission is required. Please grant the permission in Settings."
+            
+            error.contains("Already playing", ignoreCase = true) -> 
+                "Playback is already in progress."
+            
+            error.contains("Not currently playing", ignoreCase = true) -> 
+                "No playback is in progress."
+            
+            error.contains("Audio focus", ignoreCase = true) -> 
+                "Unable to play audio. Another app may be using the audio system."
+            
+            error.contains("Invalid", ignoreCase = true) -> 
+                "Invalid audio configuration. Please select a different configuration."
+            
+            else -> "Playback failed. Please try again."
+        }
     }
 
     override fun onDestroy() {

@@ -140,7 +140,7 @@ audioCallback(AAudioStream* stream, void* userData, void* audioData, int32_t num
 
     if (!g_player.waveFile || !g_player.waveFile->isOpen()) {
         g_player.isPlaying.store(false);
-        notifyPlaybackError("Audio file not opened");
+        notifyPlaybackError("[FILE] Audio file not opened");
         return AAUDIO_CALLBACK_RESULT_STOP;
     }
 
@@ -193,7 +193,7 @@ audioCallback(AAudioStream* stream, void* userData, void* audioData, int32_t num
 static void errorCallback(AAudioStream* stream, void* userData, aaudio_result_t error) {
     LOGE("AAudio error: %s", AAudio_convertResultToText(error));
     g_player.isPlaying.store(false);
-    std::string errorMsg = "Playback stream error: ";
+    std::string errorMsg = "[STREAM] Playback stream error: ";
     errorMsg += AAudio_convertResultToText(error);
     notifyPlaybackError(errorMsg);
 }
@@ -306,13 +306,8 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_ini
     return JNI_TRUE;
 }
 
-JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_setNativeConfig(JNIEnv* env,
-                                                                                             jobject thiz,
-                                                                                             jint usage,
-                                                                                             jint contentType,
-                                                                                             jint performanceMode,
-                                                                                             jint sharingMode,
-                                                                                             jstring filePath) {
+JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_setNativeConfig(
+    JNIEnv* env, jobject thiz, jint usage, jint contentType, jint performanceMode, jint sharingMode, jstring filePath) {
     LOGI("setNativeConfig");
 
     // Update configuration parameters - direct integer assignment
@@ -327,9 +322,8 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_set
         env->ReleaseStringUTFChars(filePath, path);
     }
 
-    LOGI("Config updated: usage=%d, contentType=%d, performanceMode=%d, sharingMode=%d, file=%s", 
-         g_player.usage, g_player.contentType, g_player.performanceMode, g_player.sharingMode, 
-         g_player.audioFilePath.c_str());
+    LOGI("Config updated: usage=%d, contentType=%d, performanceMode=%d, sharingMode=%d, file=%s", g_player.usage,
+         g_player.contentType, g_player.performanceMode, g_player.sharingMode, g_player.audioFilePath.c_str());
 
     return JNI_TRUE;
 }
@@ -346,11 +340,13 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_sta
     if (!g_player.waveFile->open(g_player.audioFilePath)) {
         LOGE("Failed to open: %s", g_player.audioFilePath.c_str());
         g_player.waveFile.reset();
+        notifyPlaybackError("[FILE] Cannot open audio file");
         return JNI_FALSE;
     }
 
     if (!createAAudioStream()) {
         g_player.waveFile.reset();
+        notifyPlaybackError("[STREAM] Failed to create playback stream");
         return JNI_FALSE;
     }
 
@@ -382,6 +378,7 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_sta
         AAudioStream_close(g_player.stream);
         g_player.stream = nullptr;
         g_player.waveFile.reset();
+        notifyPlaybackError("[STREAM] Failed to start playback stream");
         return JNI_FALSE;
     }
 
@@ -396,7 +393,18 @@ JNIEXPORT void JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_stopNat
     g_player.isPlaying.store(false);
 
     if (g_player.stream) {
-        AAudioStream_requestStop(g_player.stream);
+        aaudio_result_t result = AAudioStream_requestStop(g_player.stream);
+        if (result != AAUDIO_OK) {
+            LOGW("Failed to request stop: %s", AAudio_convertResultToText(result));
+        } else {
+            aaudio_stream_state_t state = AAUDIO_STREAM_STATE_STOPPING;
+            result = AAudioStream_waitForStateChange(g_player.stream, AAUDIO_STREAM_STATE_STOPPING, &state,
+                                                     100000000 // 100ms timeout in nanoseconds
+            );
+            if (result != AAUDIO_OK) {
+                LOGW("Failed to wait for stop: %s", AAudio_convertResultToText(result));
+            }
+        }
         AAudioStream_close(g_player.stream);
         g_player.stream = nullptr;
     }
@@ -404,7 +412,6 @@ JNIEXPORT void JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_stopNat
     g_player.waveFile.reset();
 
 #if LATENCY_TEST_ENABLE
-    // Close GPIO file descriptor
     closeGpio();
 #endif
 
@@ -412,28 +419,25 @@ JNIEXPORT void JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_stopNat
 }
 
 JNIEXPORT void JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_releaseNative(JNIEnv* env, jobject thiz) {
-    LOGI("releaseNative");
+    LOGI("Releasing AAudio player");
 
-    g_player.isPlaying.store(false);
-
-    if (g_player.stream) {
-        AAudioStream_requestStop(g_player.stream);
-        AAudioStream_close(g_player.stream);
-        g_player.stream = nullptr;
+    // Stop playback if still playing
+    if (g_player.isPlaying.load()) {
+        Java_com_example_aaudioplayer_player_AAudioPlayer_stopNativePlayback(env, thiz);
     }
-
-    g_player.waveFile.reset();
-
-#if LATENCY_TEST_ENABLE
-    // Close GPIO file descriptor
-    closeGpio();
-#endif
 
     // Clean up Java references
     if (g_player.playerInstance) {
         env->DeleteGlobalRef(g_player.playerInstance);
         g_player.playerInstance = nullptr;
     }
+
+    g_player.jvm = nullptr;
+    g_player.onPlaybackStartedMethod = nullptr;
+    g_player.onPlaybackStoppedMethod = nullptr;
+    g_player.onPlaybackErrorMethod = nullptr;
+
+    LOGI("AAudio player released");
 }
 
 } // extern "C"
@@ -444,7 +448,7 @@ JNIEXPORT void JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_release
 
 WaveFile::WaveFile() : isOpen_(false), header_{} {}
 
-WaveFile::~WaveFile() { close(); }
+WaveFile::~WaveFile() noexcept { close(); }
 
 bool WaveFile::open(const std::string& filePath) {
     close(); // Ensure previous file is closed

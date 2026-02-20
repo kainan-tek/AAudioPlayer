@@ -162,10 +162,7 @@ class AAudioPlayer(context: Context) {
         
         val result = startNativePlayback()
         if (!result) {
-            val error = "Playback start failed - check audio file and configuration"
-            Log.e(TAG, error)
-            abandonAudioFocus() // Release focus on playback failure
-            listener?.onPlaybackError(error)
+            abandonAudioFocus()
         }
         return result
     }

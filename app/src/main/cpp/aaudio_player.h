@@ -11,6 +11,7 @@
 #define LOG_TAG "AAudioPlayer"
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
 #ifdef __cplusplus
@@ -70,13 +71,8 @@ JNIEXPORT void JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_release
  * @param filePath Audio file path
  * @return JNI_TRUE if configuration set successfully, JNI_FALSE otherwise
  */
-JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_setNativeConfig(JNIEnv* env,
-                                                                                             jobject thiz,
-                                                                                             jint usage,
-                                                                                             jint contentType,
-                                                                                             jint performanceMode,
-                                                                                             jint sharingMode,
-                                                                                             jstring filePath);
+JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_setNativeConfig(
+    JNIEnv* env, jobject thiz, jint usage, jint contentType, jint performanceMode, jint sharingMode, jstring filePath);
 
 #ifdef __cplusplus
 }
@@ -116,7 +112,15 @@ public:
     /**
      * Destructor
      */
-    ~WaveFile();
+    ~WaveFile() noexcept;
+
+    // Disable copy and assignment
+    WaveFile(const WaveFile&) = delete;
+    WaveFile& operator=(const WaveFile&) = delete;
+
+    // Allow move
+    WaveFile(WaveFile&&) noexcept = default;
+    WaveFile& operator=(WaveFile&&) noexcept = default;
 
     /**
      * Open WAV file
