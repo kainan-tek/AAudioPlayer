@@ -1,11 +1,12 @@
-#ifndef AAUDIO_PLAYER_H
-#define AAUDIO_PLAYER_H
+#ifndef AAUDIO_PLAYER_AAUDIO_PLAYER_H_
+#define AAUDIO_PLAYER_AAUDIO_PLAYER_H_
 
-#include <android/log.h>
 #include <cstdint>
 #include <fstream>
-#include <jni.h>
 #include <string>
+
+#include <android/log.h>
+#include <jni.h>
 
 // Log macros
 #define LOG_TAG "AAudioPlayer"
@@ -81,46 +82,43 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_set
  * WAV file management class
  * Supports WAV file reading, parsing and audio data extraction
  */
-class WaveFile {
+class WavFile {
 public:
     // WAV file header structure
-    struct WaveHeader {
-        // RIFF header
-        char riffId[4];    // "RIFF"
-        uint32_t riffSize; // File size - 8
-        char waveId[4];    // "WAVE"
+    struct WavHeader {
+        char riff_id[4];    // "RIFF"
+        uint32_t riff_size; // File size - 8
+        char wave_id[4];    // "WAVE"
 
-        // fmt subchunk
-        char fmtId[4];          // "fmt "
-        uint16_t audioFormat;   // Audio format (1 = PCM)
-        uint16_t numChannels;   // Channel count
-        uint32_t sampleRate;    // Sample rate
-        uint32_t byteRate;      // Byte rate
-        uint16_t blockAlign;    // Block align
-        uint16_t bitsPerSample; // Bits per sample
+        char fmt_id[4];           // "fmt "
+        uint16_t audio_format;    // Audio format (1 = PCM)
+        uint16_t num_channels;    // Channel count
+        uint32_t sample_rate;     // Sample rate
+        uint32_t byte_rate;       // Byte rate
+        uint16_t block_align;     // Block align
+        uint16_t bits_per_sample; // Bits per sample
 
-        // data subchunk
-        char dataId[4];    // "data"
-        uint32_t dataSize; // Audio data size
+        char data_id[4];    // "data"
+        uint32_t data_size; // Audio data size
     };
 
     /**
      * Constructor
      */
-    WaveFile();
+    WavFile();
 
     /**
      * Destructor
      */
-    ~WaveFile() noexcept;
+    ~WavFile() noexcept;
 
     // Disable copy and assignment
-    WaveFile(const WaveFile&) = delete;
-    WaveFile& operator=(const WaveFile&) = delete;
+    WavFile(const WavFile&) = delete;
+    WavFile& operator=(const WavFile&) = delete;
 
     // Allow move
-    WaveFile(WaveFile&&) noexcept = default;
-    WaveFile& operator=(WaveFile&&) noexcept = default;
+    WavFile(WavFile&&) noexcept = default;
+    WavFile& operator=(WavFile&&) noexcept = default;
 
     /**
      * Open WAV file
@@ -145,8 +143,8 @@ public:
     bool isOpen() const;
 
     // Safe getter methods
-    int32_t getSampleRate() const { return static_cast<int32_t>(header_.sampleRate); }
-    int32_t getChannelCount() const { return static_cast<int32_t>(header_.numChannels); }
+    int32_t getSampleRate() const { return static_cast<int32_t>(header_.sample_rate); }
+    int32_t getChannelCount() const { return static_cast<int32_t>(header_.num_channels); }
 
     /**
      * Get corresponding AAudio format
@@ -164,8 +162,8 @@ public:
 
 private:
     std::ifstream file_;
-    WaveHeader header_{};
-    bool isOpen_;
+    WavHeader header_{};
+    bool is_open_;
 
     /**
      * Read and validate WAV file header
@@ -193,11 +191,11 @@ private:
 
     /**
      * Skip unknown subchunks
-     * @param chunkSize Subchunk size
+     * @param chunk_size Subchunk size
      */
-    void skipChunk(uint32_t chunkSize);
+    void skipChunk(uint32_t chunk_size);
 };
 
 #endif
 
-#endif // AAUDIO_PLAYER_H
+#endif // AAUDIO_PLAYER_AAUDIO_PLAYER_H_

@@ -22,10 +22,10 @@ AAudio Player is an audio playback test tool designed for the Android platform, 
 
 ### Core Components
 
+- **MainActivity**: Modern main interface controller with permission management and user interaction
 - **AAudioPlayer**: Kotlin-written audio player wrapper class with audio focus management
 - **AAudioConfig**: Audio configuration management class with dynamic config loading
-- **MainActivity**: Modern main interface controller with permission management and user interaction
-- **WaveFile**: C++ implemented WAV file parser supporting various formats
+- **WavFile**: C++ implemented WAV file parser supporting various formats
 - **Native Engine**: C++ implemented AAudio playback engine
 
 ### Technology Stack
@@ -128,7 +128,7 @@ AAudio Player is an audio playback test tool designed for the Android platform, 
       "performanceMode": "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
       "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
       "audioFilePath": "/data/48k_2ch_16bit.wav",
-      "description": "Media playback configuration"
+      "description": "Media Playback (Power Saving Mode)"
     }
   ]
 }
@@ -175,7 +175,7 @@ AAudio Player is an audio playback test tool designed for the Android platform, 
 ### Data Flow Architecture
 
 ```
-WAV File → WaveFile Parser → AAudio Stream → Audio Output Device
+WAV File → WavFile Parser → AAudio Stream → Audio Output Device
                                   ↓
                              JNI Callback → Kotlin UI Update
 ```
@@ -193,8 +193,8 @@ WAV File → WaveFile Parser → AAudio Stream → Audio Output Device
 ```kotlin
 class AAudioPlayer {
     fun setAudioConfig(config: AAudioConfig)    // Set configuration
-    fun play(): Boolean                         // Start playback
-    fun stop(): Boolean                         // Stop playback
+    fun startPlayback(): Boolean                // Start playback
+    fun stopPlayback(): Boolean                 // Stop playback
     fun isPlaying(): Boolean                    // Check playback status
     fun setPlaybackListener(listener: PlaybackListener?) // Set listener
 }
@@ -204,9 +204,9 @@ class AAudioPlayer {
 ```kotlin
 data class AAudioConfig(
     val usage: String,                          // Usage scenario
-    val contentType: String,                    // Content type
     val performanceMode: String,                // Performance mode
     val sharingMode: String,                    // Sharing mode
+    val contentType: String,                    // Content type
     val audioFilePath: String,                  // Audio file path
     val description: String                     // Config description
 )
@@ -222,7 +222,8 @@ data class AAudioConfig(
    - Check file path correctness
 
 2. **Permission Issues**
-   - Manually grant storage permission
+   - The app will automatically request permissions on first run, follow the on-screen prompts
+   - If permissions are denied, manually grant storage permission in system settings
    - Use `adb shell setenforce 0` to temporarily disable SELinux
 
 3. **Config Loading Failure**

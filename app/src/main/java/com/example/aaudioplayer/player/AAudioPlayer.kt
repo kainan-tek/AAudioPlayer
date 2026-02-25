@@ -48,16 +48,16 @@ class AAudioPlayer(context: Context) {
             }
             AudioManager.AUDIOFOCUS_LOSS -> {
                 Log.d(TAG, "Audio focus lost permanently")
-                stop() // Stop playback
+                stopPlayback() // Stop playback
             }
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
                 Log.d(TAG, "Audio focus lost temporarily")
-                stop() // Stop playback
+                stopPlayback() // Stop playback
             }
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
                 Log.d(TAG, "Audio focus lost but can duck")
                 // Simplified handling: stop playback directly
-                stop()
+                stopPlayback()
             }
         }
     }
@@ -127,7 +127,7 @@ class AAudioPlayer(context: Context) {
         )
     }
     
-    fun play(): Boolean {
+    fun startPlayback(): Boolean {
         if (isPlaying) {
             Log.w(TAG, "Already playing")
             listener?.onPlaybackError("Already playing")
@@ -167,7 +167,7 @@ class AAudioPlayer(context: Context) {
         return result
     }
     
-    fun stop(): Boolean {
+    fun stopPlayback(): Boolean {
         if (!isPlaying) {
             Log.w(TAG, "Not currently playing")
             listener?.onPlaybackError("Not currently playing")
@@ -188,7 +188,7 @@ class AAudioPlayer(context: Context) {
     
     fun release() {
         if (isPlaying) {
-            stop()
+            stopPlayback()
         }
         try {
             releaseNative()

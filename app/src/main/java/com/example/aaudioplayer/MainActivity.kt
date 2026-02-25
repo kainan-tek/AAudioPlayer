@@ -282,7 +282,7 @@ class MainActivity : AppCompatActivity() {
         }
         
         statusText.text = "Preparing to play..."
-        audioPlayer.play()
+        audioPlayer.startPlayback()
     }
 
     @SuppressLint("SetTextI18n")
@@ -293,7 +293,7 @@ class MainActivity : AppCompatActivity() {
         }
         
         statusText.text = "Stopping..."
-        audioPlayer.stop()
+        audioPlayer.stopPlayback()
     }
 
     @SuppressLint("SetTextI18n")
@@ -382,7 +382,7 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
         // Pause playback when app goes to background
         if (audioPlayer.isPlaying()) {
-            audioPlayer.stop()
+            audioPlayer.stopPlayback()
             Log.d(TAG, "Playback paused due to app going to background")
         }
     }

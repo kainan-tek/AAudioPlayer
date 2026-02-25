@@ -22,10 +22,10 @@ AAudio Player是一个专为Android平台设计的音频播放测试工具，使
 
 ### 核心组件
 
+- **MainActivity**: 现代化主界面控制器，提供权限管理和用户交互
 - **AAudioPlayer**: Kotlin编写的音频播放器封装类，集成音频焦点管理
 - **AAudioConfig**: 音频配置管理类，支持动态加载配置
-- **MainActivity**: 现代化主界面控制器，提供权限管理和用户交互
-- **WaveFile**: C++实现的WAV文件解析器，支持多种格式
+- **WavFile**: C++实现的WAV文件解析器，支持多种格式
 - **Native Engine**: C++实现的AAudio播放引擎
 
 ### 技术栈
@@ -128,7 +128,7 @@ AAudio Player是一个专为Android平台设计的音频播放测试工具，使
       "performanceMode": "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
       "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
       "audioFilePath": "/data/48k_2ch_16bit.wav",
-      "description": "媒体播放配置"
+      "description": "Media Playback (Power Saving Mode)"
     }
   ]
 }
@@ -175,7 +175,7 @@ AAudio Player是一个专为Android平台设计的音频播放测试工具，使
 ### 数据流架构
 
 ```
-WAV文件 → WaveFile解析器 → AAudio Stream → 音频输出设备
+WAV文件 → WavFile解析器 → AAudio Stream → 音频输出设备
                                 ↓
                            JNI回调 → Kotlin UI更新
 ```
@@ -193,8 +193,8 @@ WAV文件 → WaveFile解析器 → AAudio Stream → 音频输出设备
 ```kotlin
 class AAudioPlayer {
     fun setAudioConfig(config: AAudioConfig)    // 设置配置
-    fun play(): Boolean                         // 开始播放
-    fun stop(): Boolean                         // 停止播放
+    fun startPlayback(): Boolean                // 开始播放
+    fun stopPlayback(): Boolean                 // 停止播放
     fun isPlaying(): Boolean                    // 检查播放状态
     fun setPlaybackListener(listener: PlaybackListener?) // 设置监听器
 }
@@ -204,9 +204,9 @@ class AAudioPlayer {
 ```kotlin
 data class AAudioConfig(
     val usage: String,                          // 使用场景
-    val contentType: String,                    // 内容类型
     val performanceMode: String,                // 性能模式
     val sharingMode: String,                    // 共享模式
+    val contentType: String,                    // 内容类型
     val audioFilePath: String,                  // 音频文件路径
     val description: String                     // 配置描述
 )
@@ -222,7 +222,8 @@ data class AAudioConfig(
    - 检查文件路径是否正确
 
 2. **权限问题**
-   - 手动授予存储权限
+   - 应用首次运行时会自动请求权限，按照屏幕提示授予
+   - 如果权限被拒绝，可在系统设置中手动授予存储权限
    - 使用 `adb shell setenforce 0` 临时禁用SELinux
 
 3. **配置加载失败**
