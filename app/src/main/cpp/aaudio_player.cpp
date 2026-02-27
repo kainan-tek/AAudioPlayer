@@ -12,12 +12,12 @@
 #define LATENCY_TEST_ENABLE 0
 
 #if LATENCY_TEST_ENABLE
-#define LATENCY_TEST_GPIO_FILE "/sys/class/gpio/gpio376/value"
-#define LATENCY_TEST_INTERVAL 100
-
 #include <cerrno>
 #include <fcntl.h>
 #include <unistd.h>
+
+#define LATENCY_TEST_GPIO_FILE "/sys/class/gpio/gpio376/value"
+#define LATENCY_TEST_INTERVAL 100
 #endif
 
 struct AudioPlayerState {

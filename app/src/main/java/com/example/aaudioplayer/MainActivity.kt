@@ -32,14 +32,14 @@ import com.example.aaudioplayer.player.AAudioPlayer
  * System Requirements: Android 8.1 (API 27+) with AAudio support
  */
 class MainActivity : AppCompatActivity() {
-    
+
     private lateinit var audioPlayer: AAudioPlayer
     private lateinit var playButton: Button
     private lateinit var stopButton: Button
     private lateinit var configSpinner: Spinner
     private lateinit var statusText: TextView
     private lateinit var playbackInfoText: TextView
-    
+
     private var availableConfigs: List<AAudioConfig> = emptyList()
     private var currentConfig: AAudioConfig? = null
     private var isSpinnerInitialized = false
@@ -54,7 +54,7 @@ class MainActivity : AppCompatActivity() {
         // Hide title bar
         supportActionBar?.hide()
         setContentView(R.layout.activity_main)
-        
+
         initViews()
         initializeAudioPlayer()
         loadConfigurations()
@@ -67,7 +67,7 @@ class MainActivity : AppCompatActivity() {
         configSpinner = findViewById(R.id.configSpinner)
         statusText = findViewById(R.id.statusTextView)
         playbackInfoText = findViewById(R.id.playbackInfoTextView)
-        
+
         playButton.setOnClickListener {
             if (!hasAudioPermission()) {
                 requestAudioPermission()
@@ -75,11 +75,11 @@ class MainActivity : AppCompatActivity() {
             }
             startPlayback()
         }
-        
+
         stopButton.setOnClickListener {
             stopPlayback()
         }
-        
+
         updateButtonStates(false)
     }
 
@@ -128,7 +128,7 @@ class MainActivity : AppCompatActivity() {
             Log.e(TAG, "Failed to load configurations", e)
             emptyList()
         }
-        
+
         if (availableConfigs.isNotEmpty()) {
             currentConfig = availableConfigs[0]
             audioPlayer.setAudioConfig(currentConfig!!)
@@ -141,43 +141,47 @@ class MainActivity : AppCompatActivity() {
             playButton.isEnabled = false
         }
     }
-    
+
     /**
      * Setup configuration spinner
      */
     private fun setupConfigSpinner() {
         val configs = availableConfigs
         Log.d(TAG, "Setting up playback config spinner with ${configs.size} configurations")
-        
+
         if (configs.isEmpty()) {
             Log.w(TAG, "No playback configurations available for spinner")
             return
         }
-        
+
         val configNames = configs.map { it.description }
         Log.d(TAG, "Config names: $configNames")
-        
+
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, configNames)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         configSpinner.adapter = adapter
-        
+
         // Set initial selection
         currentConfig?.let {
             val index = configs.indexOfFirst { config -> config.description == it.description }
             if (index >= 0) {
                 configSpinner.setSelection(index)
-                Log.d(TAG, "Set initial playback spinner selection to index $index: ${it.description}")
+                Log.d(
+                    TAG, "Set initial playback spinner selection to index $index: ${it.description}"
+                )
             }
         }
-        
+
         configSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+            override fun onItemSelected(
+                parent: AdapterView<*>?, view: View?, position: Int, id: Long
+            ) {
                 if (!isSpinnerInitialized) {
                     isSpinnerInitialized = true
                     Log.d(TAG, "Playback spinner initialized, skipping first selection")
                     return
                 }
-                
+
                 val selectedConfig = configs[position]
                 Log.d(TAG, "Playback config selected: ${selectedConfig.description}")
                 currentConfig = selectedConfig
@@ -185,12 +189,12 @@ class MainActivity : AppCompatActivity() {
                 updatePlaybackInfo()
                 showToast("Switched to playback config: ${selectedConfig.description}")
             }
-            
+
             override fun onNothingSelected(parent: AdapterView<*>?) {
                 Log.d(TAG, "Nothing selected in playback spinner")
             }
         }
-        
+
         // Add long press listener to reload configurations
         configSpinner.setOnLongClickListener {
             Log.d(TAG, "Long press detected on playback spinner")
@@ -198,7 +202,7 @@ class MainActivity : AppCompatActivity() {
             true
         }
     }
-    
+
     /**
      * Reload configuration file
      */
@@ -223,6 +227,7 @@ class MainActivity : AppCompatActivity() {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
                 arrayOf(Manifest.permission.READ_MEDIA_AUDIO)
             }
+
             else -> {
                 arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
             }
@@ -240,28 +245,23 @@ class MainActivity : AppCompatActivity() {
         val deniedPermissions = permissions.filter {
             ActivityCompat.shouldShowRequestPermissionRationale(this, it)
         }
-        
+
         if (deniedPermissions.isNotEmpty()) {
-            AlertDialog.Builder(this)
-                .setTitle("Permission Required")
+            AlertDialog.Builder(this).setTitle("Permission Required")
                 .setMessage("This app needs audio file access permission to play audio files.")
                 .setPositiveButton("Grant") { _, _ ->
                     ActivityCompat.requestPermissions(this, permissions, PERMISSION_REQUEST_CODE)
-                }
-                .setNegativeButton("Cancel", null)
-                .show()
+                }.setNegativeButton("Cancel", null).show()
         } else {
             ActivityCompat.requestPermissions(this, permissions, PERMISSION_REQUEST_CODE)
         }
     }
 
     override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        
+
         if (requestCode == PERMISSION_REQUEST_CODE && grantResults.isNotEmpty()) {
             val allGranted = grantResults.all { it == PackageManager.PERMISSION_GRANTED }
             val message = if (allGranted) {
@@ -280,7 +280,7 @@ class MainActivity : AppCompatActivity() {
             showToast("Already playing")
             return
         }
-        
+
         statusText.text = "Preparing to play..."
         audioPlayer.startPlayback()
     }
@@ -291,7 +291,7 @@ class MainActivity : AppCompatActivity() {
             showToast("Not currently playing")
             return
         }
-        
+
         statusText.text = "Stopping..."
         audioPlayer.stopPlayback()
     }
@@ -299,10 +299,8 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetTextI18n")
     private fun updatePlaybackInfo() {
         currentConfig?.let { config ->
-            val configInfo = "Current Config: ${config.description}\n" +
-                    "Usage: ${config.usage} | ${config.contentType}\n" +
-                    "Mode: ${config.performanceMode} | ${config.sharingMode}\n" +
-                    "File: ${config.audioFilePath}"
+            val configInfo =
+                "Current Config: ${config.description}\n" + "Usage: ${config.usage} | ${config.contentType}\n" + "Mode: ${config.performanceMode} | ${config.sharingMode}\n" + "File: ${config.audioFilePath}"
             playbackInfoText.text = configInfo
         } ?: run {
             playbackInfoText.text = "Playback Information"
@@ -312,58 +310,60 @@ class MainActivity : AppCompatActivity() {
     private fun showToast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
-    
+
     /**
      * Handle audio playback errors with user-friendly messages
      */
     @SuppressLint("SetTextI18n")
     private fun handleError(error: String) {
         Log.e(TAG, "Audio playback error: $error")
-        
+
         val userMessage = getUserFriendlyErrorMessage(error)
-        
-        AlertDialog.Builder(this)
-            .setTitle("Playback Error")
-            .setMessage(userMessage)
+
+        AlertDialog.Builder(this).setTitle("Playback Error").setMessage(userMessage)
             .setPositiveButton("OK") { dialog, _ ->
                 dialog.dismiss()
                 statusText.setText(R.string.status_ready)
-            }
-            .setCancelable(true)
-            .setOnCancelListener {
+            }.setCancelable(true).setOnCancelListener {
                 statusText.setText(R.string.status_ready)
-            }
-            .show()
-        
+            }.show()
+
         statusText.text = "Error: $userMessage"
     }
-    
+
     /**
      * Convert technical error message to user-friendly message
      */
     private fun getUserFriendlyErrorMessage(error: String): String {
         return when {
-            error.startsWith("[FILE]", ignoreCase = true) -> 
-                "Unable to open audio file. The file may be corrupted or inaccessible."
-            
-            error.startsWith("[STREAM]", ignoreCase = true) -> 
-                "Audio system initialization failed. Please try again."
-            
-            error.startsWith("[PERMISSION]", ignoreCase = true) -> 
-                "Audio file access permission is required. Please grant the permission in Settings."
-            
-            error.contains("Already playing", ignoreCase = true) -> 
-                "Playback is already in progress."
-            
-            error.contains("Not currently playing", ignoreCase = true) -> 
-                "No playback is in progress."
-            
-            error.contains("Audio focus", ignoreCase = true) -> 
-                "Unable to play audio. Another app may be using the audio system."
-            
-            error.contains("Invalid", ignoreCase = true) -> 
-                "Invalid audio configuration. Please select a different configuration."
-            
+            error.startsWith(
+                "[FILE]", ignoreCase = true
+            ) -> "Unable to open audio file. The file may be corrupted or inaccessible."
+
+            error.startsWith(
+                "[STREAM]", ignoreCase = true
+            ) -> "Audio system initialization failed. Please try again."
+
+            error.startsWith(
+                "[PERMISSION]", ignoreCase = true
+            ) -> "Audio file access permission is required. Please grant the permission in Settings."
+
+            error.contains(
+                "Already playing", ignoreCase = true
+            ) -> "Playback is already in progress."
+
+            error.contains(
+                "Not currently playing", ignoreCase = true
+            ) -> "No playback is in progress."
+
+            error.contains(
+                "Audio focus", ignoreCase = true
+            ) -> "Unable to play audio. Another app may be using the audio system."
+
+            error.contains(
+                "Invalid", ignoreCase = true
+            ) -> "Invalid audio configuration. Please select a different configuration."
+
             else -> "Playback failed. Please try again."
         }
     }
@@ -377,7 +377,7 @@ class MainActivity : AppCompatActivity() {
             Log.e(TAG, "Error releasing AAudioPlayer resources", e)
         }
     }
-    
+
     override fun onPause() {
         super.onPause()
         // Pause playback when app goes to background

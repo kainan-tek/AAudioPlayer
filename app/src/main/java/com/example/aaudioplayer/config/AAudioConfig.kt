@@ -12,14 +12,14 @@ import java.io.File
 data class AAudioConfig(
     val usage: String = "AAUDIO_USAGE_MEDIA",
     val performanceMode: String = "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
-    val sharingMode: String = "AAUDIO_SHARING_MODE_SHARED", 
+    val sharingMode: String = "AAUDIO_SHARING_MODE_SHARED",
     val contentType: String = "AAUDIO_CONTENT_TYPE_MUSIC",
     val audioFilePath: String = AAudioConstants.DEFAULT_AUDIO_FILE,
     val description: String = "Default Configuration"
 ) {
     companion object {
         private const val TAG = "AAudioConfig"
-        
+
         fun loadConfigs(context: Context): List<AAudioConfig> {
             return try {
                 val externalFile = File(AAudioConstants.CONFIG_FILE_PATH)
@@ -28,7 +28,8 @@ data class AAudioConfig(
                     externalFile.readText()
                 } else {
                     Log.i(TAG, "Loading configuration from assets")
-                    context.assets.open(AAudioConstants.ASSETS_CONFIG_FILE).bufferedReader().use { it.readText() }
+                    context.assets.open(AAudioConstants.ASSETS_CONFIG_FILE).bufferedReader()
+                        .use { it.readText() }
                 }
                 parseConfigs(jsonString)
             } catch (e: Exception) {
@@ -36,22 +37,26 @@ data class AAudioConfig(
                 getDefaultConfigs()
             }
         }
-        
+
         private fun parseConfigs(jsonString: String): List<AAudioConfig> {
             val configsArray = JSONObject(jsonString).getJSONArray("configs")
             return (0 until configsArray.length()).map { i ->
                 val config = configsArray.getJSONObject(i)
                 AAudioConfig(
                     usage = config.optString("usage", "AAUDIO_USAGE_MEDIA"),
-                    performanceMode = config.optString("performanceMode", "AAUDIO_PERFORMANCE_MODE_POWER_SAVING"),
+                    performanceMode = config.optString(
+                        "performanceMode", "AAUDIO_PERFORMANCE_MODE_POWER_SAVING"
+                    ),
                     sharingMode = config.optString("sharingMode", "AAUDIO_SHARING_MODE_SHARED"),
                     contentType = config.optString("contentType", "AAUDIO_CONTENT_TYPE_MUSIC"),
-                    audioFilePath = config.optString("audioFilePath", AAudioConstants.DEFAULT_AUDIO_FILE),
+                    audioFilePath = config.optString(
+                        "audioFilePath", AAudioConstants.DEFAULT_AUDIO_FILE
+                    ),
                     description = config.optString("description", "Custom Configuration")
                 )
             }
         }
-        
+
         private fun getDefaultConfigs(): List<AAudioConfig> {
             Log.w(TAG, "Using hardcoded emergency configuration")
             return listOf(

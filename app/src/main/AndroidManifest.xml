@@ -3,24 +3,25 @@
 
     <!-- Required permissions for audio playback -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-    
+
     <!-- Read audio files from external storage -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" 
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
     <!-- Declare audio output feature -->
-    <uses-feature 
-        android:name="android.hardware.audio.output" 
+    <uses-feature
+        android:name="android.hardware.audio.output"
         android:required="true" />
 
     <application
         android:icon="@mipmap/ic_launcher"
         android:label="AAudioPlayer"
+        android:requestLegacyExternalStorage="true"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:theme="@style/Theme.AAudioPlayer"
-        android:requestLegacyExternalStorage="true">
-        
+        android:theme="@style/Theme.AAudioPlayer">
+
         <activity
             android:name=".MainActivity"
             android:exported="true">

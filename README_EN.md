@@ -2,11 +2,14 @@
 
 [中文文档](README.md) | English
 
-A high-performance audio player test application based on Android AAudio API, supporting 12 audio usage scenario configurations and WAV file playback.
+A high-performance audio player test application based on Android AAudio API, supporting 12 audio
+usage scenario configurations and WAV file playback.
 
 ## 📋 Overview
 
-AAudio Player is an audio playback test tool designed for the Android platform, using Google's AAudio low-latency audio API. This project demonstrates how to implement high-quality audio playback in Android applications, supporting various audio usage scenarios and performance modes.
+AAudioPlayer is an audio playback test tool designed for the Android platform, using Google's
+AAudio low-latency audio API. This project demonstrates how to implement high-quality audio playback
+in Android applications, supporting various audio usage scenarios and performance modes.
 
 ## ✨ Key Features
 
@@ -93,15 +96,15 @@ AAudio Player is an audio playback test tool designed for the Android platform, 
 ### Basic Operations
 
 1. **Playback Control**
-   - 🎵 **Start Playback**: Tap the green play button
-   - ⏹️ **Stop Playback**: Tap the red stop button
-   - ⚙️ **Playback Config**: Tap config button to switch audio settings
+    - 🎵 **Start Playback**: Tap the green play button
+    - ⏹️ **Stop Playback**: Tap the red stop button
+    - ⚙️ **Playback Config**: Tap config button to switch audio settings
 
 2. **Configuration Management**
-   - Auto-load configurations on app startup
-   - Support dynamic loading from external files
-   - Switch between different audio scenarios via dropdown menu at runtime
-   - Long-press config dropdown to reload external config file
+    - Auto-load configurations on app startup
+    - Support dynamic loading from external files
+    - Switch between different audio scenarios via dropdown menu at runtime
+    - Long-press config dropdown to reload external config file
 
 ### UI Features
 
@@ -137,6 +140,7 @@ AAudio Player is an audio playback test tool designed for the Android platform, 
 ### Supported Constant Values
 
 **Usage (Usage Scenarios):**
+
 - `AAUDIO_USAGE_MEDIA` - Media playback
 - `AAUDIO_USAGE_VOICE_COMMUNICATION` - Voice call
 - `AAUDIO_USAGE_VOICE_COMMUNICATION_SIGNALLING` - Call signaling
@@ -151,15 +155,18 @@ AAudio Player is an audio playback test tool designed for the Android platform, 
 - `AAUDIO_USAGE_ASSISTANT` - Voice assistant
 
 **Content Type:**
+
 - `AAUDIO_CONTENT_TYPE_MUSIC` - Music
 - `AAUDIO_CONTENT_TYPE_SPEECH` - Speech
 - `AAUDIO_CONTENT_TYPE_SONIFICATION` - Sound effects
 
 **Performance Mode:**
+
 - `AAUDIO_PERFORMANCE_MODE_LOW_LATENCY` - Low latency mode
 - `AAUDIO_PERFORMANCE_MODE_POWER_SAVING` - Power saving mode
 
 **Sharing Mode:**
+
 - `AAUDIO_SHARING_MODE_EXCLUSIVE` - Exclusive mode
 - `AAUDIO_SHARING_MODE_SHARED` - Shared mode
 
@@ -190,6 +197,7 @@ WAV File → WavFile Parser → AAudio Stream → Audio Output Device
 ## 📚 API Reference
 
 ### AAudioPlayer Class
+
 ```kotlin
 class AAudioPlayer {
     fun setAudioConfig(config: AAudioConfig)    // Set configuration
@@ -201,6 +209,7 @@ class AAudioPlayer {
 ```
 
 ### AAudioConfig Class
+
 ```kotlin
 data class AAudioConfig(
     val usage: String,                          // Usage scenario
@@ -217,30 +226,32 @@ data class AAudioConfig(
 ### Common Issues
 
 1. **Playback Failure**
-   - Confirm WAV file format support
-   - Verify device permission settings
-   - Check file path correctness
+    - Confirm WAV file format support
+    - Verify device permission settings
+    - Check file path correctness
 
 2. **Permission Issues**
-   - The app will automatically request permissions on first run, follow the on-screen prompts
-   - If permissions are denied, manually grant storage permission in system settings
-   - Use `adb shell setenforce 0` to temporarily disable SELinux
+    - The app will automatically request permissions on first run, follow the on-screen prompts
+    - If permissions are denied, manually grant storage permission in system settings
+    - Use `adb shell setenforce 0` to temporarily disable SELinux
 
 3. **Config Loading Failure**
-   - Check JSON format correctness
-   - Verify config file path
-   - View log output
+    - Check JSON format correctness
+    - Verify config file path
+    - View log output
 
 4. **Audio Focus Issues**
-   - Ensure no other apps are using audio
-   - Check audio focus request success
+    - Ensure no other apps are using audio
+    - Check audio focus request success
 
 ### Debug Information
+
 ```bash
 adb logcat -s AAudioPlayer MainActivity
 ```
 
 ### Log Tags
+
 - `AAudioPlayer`: Player related logs
 - `MainActivity`: Main interface related logs
 - `AAudioConfig`: Configuration related logs
@@ -256,7 +267,8 @@ adb logcat -s AAudioPlayer MainActivity
 
 ## 🔗 Related Projects
 
-- [**AAudioRecorder**](https://github.com/kainan-tek/AAudioRecorder) - Companion AAudio recorder project
+- [**AAudioRecorder**](https://github.com/kainan-tek/AAudioRecorder) - Companion AAudio recorder
+  project
 - [**AudioPlayer**](https://github.com/kainan-tek/AudioPlayer) - Basic audio player project
 - [**AudioRecorder**](https://github.com/kainan-tek/AudioRecorder) - Basic audio recorder project
 
@@ -266,4 +278,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Note**: This project is for learning and testing purposes only. Please ensure use in appropriate devices and environments.
+**Note**: This project is for learning and testing purposes only. Please ensure use in appropriate
+devices and environments.

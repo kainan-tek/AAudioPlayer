@@ -6,7 +6,7 @@
 
 ## 📋 项目概述
 
-AAudio Player是一个专为Android平台设计的音频播放测试工具，使用Google的AAudio低延迟音频API。该项目展示了如何在Android应用中实现高质量的音频播放，支持多种音频使用场景和性能模式。
+AAudioPlayer是一个专为Android平台设计的音频播放测试工具，使用Google的AAudio低延迟音频API。该项目展示了如何在Android应用中实现高质量的音频播放，支持多种音频使用场景和性能模式。
 
 ## ✨ 主要特性
 
@@ -93,15 +93,15 @@ AAudio Player是一个专为Android平台设计的音频播放测试工具，使
 ### 基本操作
 
 1. **播放控制**
-   - 🎵 **开始播放**: 点击绿色播放按钮
-   - ⏹️ **停止播放**: 点击红色停止按钮
-   - ⚙️ **播放配置**: 点击配置按钮切换音频设置
+    - 🎵 **开始播放**: 点击绿色播放按钮
+    - ⏹️ **停止播放**: 点击红色停止按钮
+    - ⚙️ **播放配置**: 点击配置按钮切换音频设置
 
 2. **配置管理**
-   - 应用启动时自动加载配置
-   - 支持从外部文件动态加载配置
-   - 可在运行时通过下拉菜单切换不同的音频场景
-   - 长按配置下拉菜单可重新加载外部配置文件
+    - 应用启动时自动加载配置
+    - 支持从外部文件动态加载配置
+    - 可在运行时通过下拉菜单切换不同的音频场景
+    - 长按配置下拉菜单可重新加载外部配置文件
 
 ### 界面功能
 
@@ -137,6 +137,7 @@ AAudio Player是一个专为Android平台设计的音频播放测试工具，使
 ### 支持的常量值
 
 **Usage (使用场景):**
+
 - `AAUDIO_USAGE_MEDIA` - 媒体播放
 - `AAUDIO_USAGE_VOICE_COMMUNICATION` - 语音通话
 - `AAUDIO_USAGE_VOICE_COMMUNICATION_SIGNALLING` - 通话信令
@@ -151,15 +152,18 @@ AAudio Player是一个专为Android平台设计的音频播放测试工具，使
 - `AAUDIO_USAGE_ASSISTANT` - 语音助手
 
 **Content Type (内容类型):**
+
 - `AAUDIO_CONTENT_TYPE_MUSIC` - 音乐
 - `AAUDIO_CONTENT_TYPE_SPEECH` - 语音
 - `AAUDIO_CONTENT_TYPE_SONIFICATION` - 音效
 
 **Performance Mode (性能模式):**
+
 - `AAUDIO_PERFORMANCE_MODE_LOW_LATENCY` - 低延迟模式
 - `AAUDIO_PERFORMANCE_MODE_POWER_SAVING` - 省电模式
 
 **Sharing Mode (共享模式):**
+
 - `AAUDIO_SHARING_MODE_EXCLUSIVE` - 独占模式
 - `AAUDIO_SHARING_MODE_SHARED` - 共享模式
 
@@ -190,6 +194,7 @@ WAV文件 → WavFile解析器 → AAudio Stream → 音频输出设备
 ## 📚 API 参考
 
 ### AAudioPlayer 类
+
 ```kotlin
 class AAudioPlayer {
     fun setAudioConfig(config: AAudioConfig)    // 设置配置
@@ -201,6 +206,7 @@ class AAudioPlayer {
 ```
 
 ### AAudioConfig 类
+
 ```kotlin
 data class AAudioConfig(
     val usage: String,                          // 使用场景
@@ -217,30 +223,32 @@ data class AAudioConfig(
 ### 常见问题
 
 1. **播放失败**
-   - 确认WAV文件格式支持
-   - 验证设备权限设置
-   - 检查文件路径是否正确
+    - 确认WAV文件格式支持
+    - 验证设备权限设置
+    - 检查文件路径是否正确
 
 2. **权限问题**
-   - 应用首次运行时会自动请求权限，按照屏幕提示授予
-   - 如果权限被拒绝，可在系统设置中手动授予存储权限
-   - 使用 `adb shell setenforce 0` 临时禁用SELinux
+    - 应用首次运行时会自动请求权限，按照屏幕提示授予
+    - 如果权限被拒绝，可在系统设置中手动授予存储权限
+    - 使用 `adb shell setenforce 0` 临时禁用SELinux
 
 3. **配置加载失败**
-   - 检查JSON格式是否正确
-   - 验证配置文件路径
-   - 查看日志输出
+    - 检查JSON格式是否正确
+    - 验证配置文件路径
+    - 查看日志输出
 
 4. **音频焦点问题**
-   - 确保没有其他应用占用音频
-   - 检查音频焦点申请是否成功
+    - 确保没有其他应用占用音频
+    - 检查音频焦点申请是否成功
 
 ### 调试信息
+
 ```bash
 adb logcat -s AAudioPlayer MainActivity
 ```
 
 ### 日志标签
+
 - `AAudioPlayer`: 播放器相关日志
 - `MainActivity`: 主界面相关日志
 - `AAudioConfig`: 配置相关日志
