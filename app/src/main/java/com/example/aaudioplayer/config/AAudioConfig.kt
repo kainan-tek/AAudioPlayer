@@ -7,7 +7,7 @@ import org.json.JSONObject
 import java.io.File
 
 /**
- * AAudio playback configuration data class - optimized with constants
+ * AAudio playback configuration data class
  */
 data class AAudioConfig(
     val usage: String = "AAUDIO_USAGE_MEDIA",
@@ -17,6 +17,12 @@ data class AAudioConfig(
     val audioFilePath: String = AAudioConstants.DEFAULT_AUDIO_FILE,
     val description: String = "Default Configuration"
 ) {
+    init {
+        require(audioFilePath.isNotBlank()) {
+            "Audio file path cannot be blank"
+        }
+    }
+
     companion object {
         private const val TAG = "AAudioConfig"
 
@@ -36,6 +42,11 @@ data class AAudioConfig(
                 Log.e(TAG, "Failed to load configurations", e)
                 getDefaultConfigs()
             }
+        }
+
+        fun reloadConfigs(context: Context): List<AAudioConfig> {
+            Log.i(TAG, "Reloading configuration file")
+            return loadConfigs(context)
         }
 
         private fun parseConfigs(jsonString: String): List<AAudioConfig> {

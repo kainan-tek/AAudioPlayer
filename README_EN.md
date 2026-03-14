@@ -1,126 +1,113 @@
-# AAudio Player
+# AAudioPlayer
 
 [中文文档](README.md) | English
 
-A high-performance audio player test application based on Android AAudio API, supporting 12 audio
-usage scenario configurations and WAV file playback.
+A high-performance audio player based on Android AAudio API, supporting 12 audio scenario
+configurations.
 
-## 📋 Overview
+## Table of Contents
 
-AAudioPlayer is an audio playback test tool designed for the Android platform, using Google's
-AAudio low-latency audio API. This project demonstrates how to implement high-quality audio playback
-in Android applications, supporting various audio usage scenarios and performance modes.
+- [Introduction](#introduction)
+- [Quick Start](#quick-start)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [API Reference](#api-reference)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
 
-## ✨ Key Features
+## Introduction
 
-- **🎵 WAV File Playback**: Supports multi-channel PCM format WAV file playback
-- **⚡ Low-Latency Audio**: Low-latency playback based on AAudio API (~10-40ms)
-- **🔧 12 Usage Scenarios**: Covers media, calls, games, navigation and other audio scenarios
-- **📱 Modern UI**: Intuitive control interface with Material Design style
-- **🛠️ Dynamic Configuration**: Runtime switching of audio configurations, JSON config file support
-- **🎯 Audio Focus Management**: Automatic audio focus request and release handling
-- **🏗️ Optimized Architecture**: Clear code structure and modular design
+AAudioPlayer is an Android high-performance audio player based on Android AAudio Native API,
+designed for low-latency audio playback scenarios.
 
-## 🏗️ Technical Architecture
+### Key Features
 
-### Core Components
+- **12 Audio Scenarios**: Media playback, voice call, alarm, notification, game, etc.
+- **Complete Audio Support**: 1-16 channels, 8kHz-192kHz sample rates, 8/16/24/32-bit PCM
+- **WAV File Support**: Automatic WAV header parsing, multiple PCM formats supported
+- **Low Latency Mode**: LOW_LATENCY performance mode with latency as low as 10-40ms
+- **Flexible Configuration**: JSON configuration file with external hot-reload support
+- **Native Implementation**: C++ implementation with JNI callbacks, high performance and low
+  overhead
 
-- **MainActivity**: Modern main interface controller with permission management and user interaction
-- **AAudioPlayer**: Kotlin-written audio player wrapper class with audio focus management
-- **AAudioConfig**: Audio configuration management class with dynamic config loading
-- **WavFile**: C++ implemented WAV file parser supporting various formats
-- **Native Engine**: C++ implemented AAudio playback engine
+### Audio Scenarios
 
-### Technology Stack
+| Scenario           | Usage                          | Performance Mode      | Typical Latency |
+|--------------------|--------------------------------|-----------------------|-----------------|
+| Media Playback     | MEDIA                          | Power Saving          | ~80-120ms       |
+| Voice Call         | VOICE_COMMUNICATION            | Low Latency Exclusive | ~10-40ms        |
+| Call Signaling     | VOICE_COMMUNICATION_SIGNALLING | Power Saving          | ~80-120ms       |
+| Alarm              | ALARM                          | Power Saving          | ~80-120ms       |
+| Notification       | NOTIFICATION                   | Power Saving          | ~80-120ms       |
+| Ringtone           | RINGTONE                       | Power Saving          | ~80-120ms       |
+| Notification Event | NOTIFICATION_EVENT             | Power Saving          | ~80-120ms       |
+| Accessibility      | ASSISTANCE_ACCESSIBILITY       | Low Latency Exclusive | ~10-40ms        |
+| Navigation Voice   | ASSISTANCE_NAVIGATION_GUIDANCE | Power Saving          | ~80-120ms       |
+| System Sound       | ASSISTANCE_SONIFICATION        | Low Latency           | ~40-80ms        |
+| Game               | GAME                           | Power Saving          | ~80-120ms       |
+| Voice Assistant    | ASSISTANT                      | Power Saving          | ~80-120ms       |
 
-- **Language**: Kotlin + C++
-- **Audio API**: Android AAudio
+## Quick Start
+
+### Basic Usage
+
+1. **Select Config** - Choose audio scenario via dropdown menu
+2. **Start Playback** - Tap green play button
+3. **Stop Playback** - Tap red stop button
+4. **Reload Config** - Long-press dropdown to reload external config
+
+### Common Operations
+
+```bash
+# Push test file to device
+adb push 48k_2ch_16bit.wav /data/
+
+# View playback logs
+adb logcat -s AAudioPlayer MainActivity AAudioConfig
+
+# Check config file
+adb shell cat /data/aaudio_player_configs.json
+```
+
+## Installation
+
+### Requirements
+
+- **Android Version**: Android 12L (API 32) or higher
+- **Development Environment**: Android Studio + NDK 29.0+
 - **Build System**: Gradle + CMake
-- **Minimum Version**: Android 12L (API 32)
-- **Target Version**: Android 15 (API 36)
-- **NDK Version**: 29.0.14206865
-- **Java Version**: Java 21
 
-## 🎵 Supported Audio Scenarios
+### Build and Install
 
-### 12 Preset Configurations
+```bash
+git clone https://github.com/kainan-tek/AAudioPlayer.git
+cd AAudioPlayer
+./gradlew assembleDebug
+adb install app/build/outputs/apk/debug/app-debug.apk
+adb push 48k_2ch_16bit.wav /data/
+```
 
-1. **Media Playback** - Music and video playback (power saving mode)
-2. **Voice Call** - Real-time voice communication (low latency exclusive mode)
-3. **Call Signaling** - Call prompt tones (power saving mode)
-4. **Alarm Sound** - System alarm (power saving mode)
-5. **Notification Sound** - System notification (power saving mode)
-6. **Ringtone Playback** - Incoming call ringtone (power saving mode)
-7. **Notification Event** - Event reminder (power saving mode)
-8. **Accessibility** - Accessibility service (low latency exclusive mode)
-9. **Navigation Voice** - GPS navigation announcement (power saving mode)
-10. **System Alert** - System sound effects (low latency mode)
-11. **Game Audio** - Game sound effects (power saving mode)
-12. **Voice Assistant** - AI assistant voice (power saving mode)
+### Permissions
 
-## 🚀 Quick Start
+| Permission              | Purpose               | Version     |
+|-------------------------|-----------------------|-------------|
+| `MODIFY_AUDIO_SETTINGS` | Audio control         | All         |
+| `READ_MEDIA_AUDIO`      | Read audio files      | Android 13+ |
+| `READ_EXTERNAL_STORAGE` | Read external storage | Android 12- |
 
-### System Requirements
+```bash
+# Grant permission manually
+adb shell pm grant com.example.aaudioplayer android.permission.READ_EXTERNAL_STORAGE
+```
 
-- Android 12L (API 32) or higher
-- Device with AAudio support
-- Development Environment: Android Studio
+## Configuration
 
-### Permission Requirements
+### Config File Location
 
-- `MODIFY_AUDIO_SETTINGS`: Audio playback control
-- `READ_MEDIA_AUDIO`: Read audio files permission (Android 13+)
-- `READ_EXTERNAL_STORAGE`: Read external storage permission (Android 12 and below)
-
-### Installation Steps
-
-1. **Clone Project**
-   ```bash
-   git clone https://github.com/kainan-tek/AAudioPlayer.git
-   cd AAudioPlayer
-   ```
-
-2. **Prepare Test Files**
-   ```bash
-   adb push 48k_2ch_16bit.wav /data/
-   ```
-
-3. **Build and Install**
-   ```bash
-   ./gradlew assembleDebug
-   adb install app/build/outputs/apk/debug/app-debug.apk
-   ```
-
-## 📖 Usage Guide
-
-### Basic Operations
-
-1. **Playback Control**
-    - 🎵 **Start Playback**: Tap the green play button
-    - ⏹️ **Stop Playback**: Tap the red stop button
-    - ⚙️ **Playback Config**: Tap config button to switch audio settings
-
-2. **Configuration Management**
-    - Auto-load configurations on app startup
-    - Support dynamic loading from external files
-    - Switch between different audio scenarios via dropdown menu at runtime
-    - Long-press config dropdown to reload external config file
-
-### UI Features
-
-- **Status Display**: Real-time display of playback status and audio parameters
-- **Config Selection**: Select different audio configurations via dropdown menu
-- **Permission Management**: Auto-check and request necessary permissions
-- **Config Reload**: Long-press dropdown menu to reload external config file
-
-## 🔧 Configuration File
-
-### Configuration Location
-
-- **External Config**: `/data/aaudio_player_configs.json` (priority)
+- **External Config**: `/data/aaudio_player_configs.json` (loaded first)
 - **Built-in Config**: `app/src/main/assets/aaudio_player_configs.json`
 
-### Configuration Format
+### Config File Format
 
 ```json
 {
@@ -131,152 +118,148 @@ in Android applications, supporting various audio usage scenarios and performanc
       "performanceMode": "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
       "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
       "audioFilePath": "/data/48k_2ch_16bit.wav",
-      "description": "Media Playback (Power Saving Mode)"
+      "description": "Media Playback"
     }
   ]
 }
 ```
 
-### Supported Constant Values
+### Configuration Parameters
 
-**Usage (Usage Scenarios):**
+#### Usage
 
-- `AAUDIO_USAGE_MEDIA` - Media playback
-- `AAUDIO_USAGE_VOICE_COMMUNICATION` - Voice call
-- `AAUDIO_USAGE_VOICE_COMMUNICATION_SIGNALLING` - Call signaling
-- `AAUDIO_USAGE_ALARM` - Alarm
-- `AAUDIO_USAGE_NOTIFICATION` - Notification
-- `AAUDIO_USAGE_NOTIFICATION_RINGTONE` - Ringtone
-- `AAUDIO_USAGE_NOTIFICATION_EVENT` - Notification event
-- `AAUDIO_USAGE_ASSISTANCE_ACCESSIBILITY` - Accessibility
-- `AAUDIO_USAGE_ASSISTANCE_NAVIGATION_GUIDANCE` - Navigation voice
-- `AAUDIO_USAGE_ASSISTANCE_SONIFICATION` - System alert
-- `AAUDIO_USAGE_GAME` - Game audio
-- `AAUDIO_USAGE_ASSISTANT` - Voice assistant
+| Value                                         | Description                   |
+|-----------------------------------------------|-------------------------------|
+| `AAUDIO_USAGE_MEDIA`                          | Media playback (music, video) |
+| `AAUDIO_USAGE_VOICE_COMMUNICATION`            | Voice call (VoIP)             |
+| `AAUDIO_USAGE_VOICE_COMMUNICATION_SIGNALLING` | Call signaling audio          |
+| `AAUDIO_USAGE_ALARM`                          | Alarm                         |
+| `AAUDIO_USAGE_NOTIFICATION`                   | Notification                  |
+| `AAUDIO_USAGE_NOTIFICATION_RINGTONE`          | Notification ringtone         |
+| `AAUDIO_USAGE_NOTIFICATION_EVENT`             | Notification event            |
+| `AAUDIO_USAGE_ASSISTANCE_ACCESSIBILITY`       | Accessibility features        |
+| `AAUDIO_USAGE_ASSISTANCE_NAVIGATION_GUIDANCE` | Navigation voice guidance     |
+| `AAUDIO_USAGE_ASSISTANCE_SONIFICATION`        | System alert sounds           |
+| `AAUDIO_USAGE_GAME`                           | Game                          |
+| `AAUDIO_USAGE_ASSISTANT`                      | Voice assistant               |
+| `AAUDIO_USAGE_EMERGENCY`                      | Emergency alert               |
+| `AAUDIO_USAGE_SAFETY`                         | Safety warning                |
+| `AAUDIO_USAGE_VEHICLE_STATUS`                 | Vehicle status                |
+| `AAUDIO_USAGE_ANNOUNCEMENT`                   | Public announcement           |
 
-**Content Type:**
+#### Content Type
 
-- `AAUDIO_CONTENT_TYPE_MUSIC` - Music
-- `AAUDIO_CONTENT_TYPE_SPEECH` - Speech
-- `AAUDIO_CONTENT_TYPE_SONIFICATION` - Sound effects
+| Value                              | Description   |
+|------------------------------------|---------------|
+| `AAUDIO_CONTENT_TYPE_MUSIC`        | Music         |
+| `AAUDIO_CONTENT_TYPE_SPEECH`       | Speech        |
+| `AAUDIO_CONTENT_TYPE_SONIFICATION` | Sound effects |
+| `AAUDIO_CONTENT_TYPE_MOVIE`        | Movie         |
+| `AAUDIO_CONTENT_TYPE_UNKNOWN`      | Unknown       |
 
-**Performance Mode:**
+#### Performance Mode
 
-- `AAUDIO_PERFORMANCE_MODE_LOW_LATENCY` - Low latency mode
-- `AAUDIO_PERFORMANCE_MODE_POWER_SAVING` - Power saving mode
+| Value                                  | Description       | Typical Latency |
+|----------------------------------------|-------------------|-----------------|
+| `AAUDIO_PERFORMANCE_MODE_LOW_LATENCY`  | Low latency mode  | ~10-40ms        |
+| `AAUDIO_PERFORMANCE_MODE_POWER_SAVING` | Power saving mode | ~80-120ms       |
+| `AAUDIO_PERFORMANCE_MODE_NONE`         | Default mode      | System default  |
 
-**Sharing Mode:**
+#### Sharing Mode
 
-- `AAUDIO_SHARING_MODE_EXCLUSIVE` - Exclusive mode
-- `AAUDIO_SHARING_MODE_SHARED` - Shared mode
+| Value                           | Description                        |
+|---------------------------------|------------------------------------|
+| `AAUDIO_SHARING_MODE_EXCLUSIVE` | Exclusive mode (lower latency)     |
+| `AAUDIO_SHARING_MODE_SHARED`    | Shared mode (better compatibility) |
 
-## 🔍 Technical Details
-
-### AAudio Integration
-
-- Callback mode for low-latency playback
-- Multiple audio format support (16/24/32-bit PCM)
-- Complete error handling mechanism
-- Automatic audio focus management
-
-### Data Flow Architecture
-
-```
-WAV File → WavFile Parser → AAudio Stream → Audio Output Device
-                                  ↓
-                             JNI Callback → Kotlin UI Update
-```
-
-### WAV File Support
-
-- Standard RIFF/WAVE format parsing
-- Multi-channel audio support (1-16 channels)
-- Sample rate range: 8kHz - 192kHz
-- Bit depth support: 8/16/24/32-bit
-
-## 📚 API Reference
+## API Reference
 
 ### AAudioPlayer Class
 
 ```kotlin
-class AAudioPlayer {
-    fun setAudioConfig(config: AAudioConfig)    // Set configuration
-    fun startPlayback(): Boolean                // Start playback
-    fun stopPlayback(): Boolean                 // Stop playback
-    fun isPlaying(): Boolean                    // Check playback status
-    fun setPlaybackListener(listener: PlaybackListener?) // Set listener
+class AAudioPlayer(context: Context) {
+    fun setAudioConfig(config: AAudioConfig)   // Set audio configuration
+    fun startPlayback(): Boolean               // Start playback
+    fun stopPlayback()                         // Stop playback (idempotent)
+    fun isPlaying(): Boolean                   // Check if playing
+    fun release()                              // Release resources
+    fun setPlaybackListener(listener: PlaybackListener?)  // Set listener
 }
 ```
 
-### AAudioConfig Class
+### PlaybackListener Interface
 
 ```kotlin
-data class AAudioConfig(
-    val usage: String,                          // Usage scenario
-    val performanceMode: String,                // Performance mode
-    val sharingMode: String,                    // Sharing mode
-    val contentType: String,                    // Content type
-    val audioFilePath: String,                  // Audio file path
-    val description: String                     // Config description
-)
+interface PlaybackListener {
+    fun onPlaybackStarted()                    // Playback started callback
+    fun onPlaybackStopped()                    // Playback stopped callback
+    fun onPlaybackError(error: String)         // Playback error callback
+}
 ```
 
-## 🐛 Troubleshooting
+### Error Prefixes
+
+| Prefix    | Description                |
+|-----------|----------------------------|
+| `[PARAM]` | Parameter validation error |
+| `[FOCUS]` | Audio focus error          |
+
+> **Note**: `[FILE]`, `[STREAM]`, `[PERMISSION]` errors are used in Native layer only, not exposed
+> to Java/Kotlin layer.
+
+## Troubleshooting
 
 ### Common Issues
 
-1. **Playback Failure**
-    - Confirm WAV file format support
-    - Verify device permission settings
-    - Check file path correctness
-
-2. **Permission Issues**
-    - The app will automatically request permissions on first run, follow the on-screen prompts
-    - If permissions are denied, manually grant storage permission in system settings
-    - Use `adb shell setenforce 0` to temporarily disable SELinux
-
-3. **Config Loading Failure**
-    - Check JSON format correctness
-    - Verify config file path
-    - View log output
-
-4. **Audio Focus Issues**
-    - Ensure no other apps are using audio
-    - Check audio focus request success
-
-### Debug Information
+#### 1. Playback Failed
 
 ```bash
-adb logcat -s AAudioPlayer MainActivity
+# Check if file exists
+adb shell ls -la /data/*.wav
+
+# View detailed logs
+adb logcat -s AAudioPlayer aaudio_player
 ```
 
-### Log Tags
+#### 2. Permission Issues
 
-- `AAudioPlayer`: Player related logs
-- `MainActivity`: Main interface related logs
-- `AAudioConfig`: Configuration related logs
+```bash
+adb shell pm grant com.example.aaudioplayer android.permission.READ_EXTERNAL_STORAGE
+adb shell setenforce 0
+```
 
-## 📊 Performance Metrics
+#### 3. Config Loading Failed
 
-- **Low Latency Mode**: ~10-40ms
-- **Power Saving Mode**: ~80-120ms
-- **Sample Rate**: 8kHz - 192kHz
-- **Channel Count**: 1-16 channels
-- **Bit Depth**: 8/16/24/32-bit
-- **Supported Format**: PCM WAV file
+```bash
+# Check JSON format
+adb shell cat /data/aaudio_player_configs.json
 
-## 🔗 Related Projects
+# View config parsing logs
+adb logcat -s AAudioConfig
+```
 
-- [**AAudioRecorder**](https://github.com/kainan-tek/AAudioRecorder) - Companion AAudio recorder
-  project
-- [**AudioPlayer**](https://github.com/kainan-tek/AudioPlayer) - Basic audio player project
-- [**AudioRecorder**](https://github.com/kainan-tek/AudioRecorder) - Basic audio recorder project
+### Debug Commands
 
-## 📄 License
+```bash
+adb logcat -s AAudioPlayer MainActivity AAudioConfig aaudio_player
+adb logcat -s AAudio
+```
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## Related Projects
+
+- [AAudioRecorder](https://github.com/kainan-tek/AAudioRecorder) - High-performance recorder based
+  on AAudio API
+- [AudioPlayer](https://github.com/kainan-tek/AudioPlayer) - Audio player based on AudioTrack API
+- [AudioRecorder](https://github.com/kainan-tek/AudioRecorder) - Audio recorder based on AudioRecord
+  API
+- [audio_test_client](https://github.com/kainan-tek/audio_test_client) - Android system-level audio
+  testing tool
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
 
-**Note**: This project is for learning and testing purposes only. Please ensure use in appropriate
-devices and environments.
+**Note**: This project is for learning and testing purposes only. AAudio API requires Android 12L (
+API 32) or higher.

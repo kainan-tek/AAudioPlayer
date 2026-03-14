@@ -28,8 +28,8 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         # List C/C++ source files with relative paths to this CMakeLists.txt.
         aaudio_player.cpp)
 
-# Specify C++14 standard for std::make_unique support
-set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY CXX_STANDARD 14)
+# Specify C++17 standard for modern C++ features
+set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 
 # Specifies libraries CMake should link to your target library. You

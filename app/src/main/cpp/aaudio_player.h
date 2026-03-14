@@ -1,5 +1,5 @@
-#ifndef AAUDIO_PLAYER_AAUDIO_PLAYER_H_
-#define AAUDIO_PLAYER_AAUDIO_PLAYER_H_
+#ifndef APP_SRC_MAIN_CPP_AAUDIO_PLAYER_H_
+#define APP_SRC_MAIN_CPP_AAUDIO_PLAYER_H_
 
 #include <cstdint>
 #include <fstream>
@@ -51,8 +51,10 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_sta
  * Stop audio playback
  * @param env JNI environment
  * @param thiz Java object instance
+ * @return JNI_TRUE if playback stopped successfully
  */
-JNIEXPORT void JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_stopNativePlayback(JNIEnv* env, jobject thiz);
+JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_stopNativePlayback(JNIEnv* env,
+                                                                                                jobject thiz);
 
 /**
  * Release audio player resources
@@ -86,20 +88,20 @@ class WavFile {
 public:
     // WAV file header structure
     struct WavHeader {
-        char riff_id[4];    // "RIFF"
-        uint32_t riff_size; // File size - 8
-        char wave_id[4];    // "WAVE"
+        char riff_id[4];     // "RIFF"
+        uint32_t riff_size;  // File size - 8
+        char wave_id[4];     // "WAVE"
 
-        char fmt_id[4];           // "fmt "
-        uint16_t audio_format;    // Audio format (1 = PCM)
-        uint16_t num_channels;    // Channel count
-        uint32_t sample_rate;     // Sample rate
-        uint32_t byte_rate;       // Byte rate
-        uint16_t block_align;     // Block align
-        uint16_t bits_per_sample; // Bits per sample
+        char fmt_id[4];            // "fmt "
+        uint16_t audio_format;     // Audio format (1 = PCM)
+        uint16_t num_channels;     // Channel count
+        uint32_t sample_rate;      // Sample rate
+        uint32_t byte_rate;        // Byte rate
+        uint16_t block_align;      // Block align
+        uint16_t bits_per_sample;  // Bits per sample
 
-        char data_id[4];    // "data"
-        uint32_t data_size; // Audio data size
+        char data_id[4];     // "data"
+        uint32_t data_size;  // Audio data size
     };
 
     /**
@@ -198,4 +200,4 @@ private:
 
 #endif
 
-#endif // AAUDIO_PLAYER_AAUDIO_PLAYER_H_
+#endif  // APP_SRC_MAIN_CPP_AAUDIO_PLAYER_H_

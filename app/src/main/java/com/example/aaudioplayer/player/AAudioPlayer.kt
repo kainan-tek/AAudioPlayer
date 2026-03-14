@@ -9,7 +9,14 @@ import com.example.aaudioplayer.common.AAudioConstants
 import com.example.aaudioplayer.config.AAudioConfig
 
 /**
- * AAudio Player - supports audio focus management
+ * Playback state enumeration
+ */
+enum class PlaybackState {
+    IDLE, PLAYING, ERROR
+}
+
+/**
+ * Audio player using AAudio API
  */
 class AAudioPlayer(context: Context) {
     companion object {
@@ -35,7 +42,9 @@ class AAudioPlayer(context: Context) {
         context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private var currentConfig: AAudioConfig = AAudioConfig()
     private var listener: PlaybackListener? = null
-    private var isPlaying = false
+
+    @Volatile
+    private var state = PlaybackState.IDLE
 
     // Audio focus related
     private var audioFocusRequest: AudioFocusRequest? = null
@@ -43,40 +52,27 @@ class AAudioPlayer(context: Context) {
     // Audio focus change listener
     private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
         when (focusChange) {
-            AudioManager.AUDIOFOCUS_GAIN -> {
-                Log.d(TAG, "Audio focus gained")
-                // Could resume playback here, but keeping it simple, no auto-resume
-            }
-
             AudioManager.AUDIOFOCUS_LOSS -> {
-                Log.d(TAG, "Audio focus lost permanently")
-                stopPlayback() // Stop playback
+                Log.d(TAG, "Audio focus lost, stopping playback")
+                stopPlayback()
             }
 
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                Log.d(TAG, "Audio focus lost temporarily")
-                stopPlayback() // Stop playback
+                Log.d(TAG, "Audio focus lost transiently, stopping playback")
+                stopPlayback()
             }
 
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
-                Log.d(TAG, "Audio focus lost but can duck")
-                // Simplified handling: stop playback directly
+                Log.d(TAG, "Audio focus lost with ducking, stopping playback")
                 stopPlayback()
             }
         }
     }
 
     init {
-        // Initialize native layer, pass default configuration
+        // Initialize native layer with default file path
         initializeNative(currentConfig.audioFilePath)
-        // Set default configuration with integer values
-        setNativeConfig(
-            AAudioConstants.getUsage(currentConfig.usage),
-            AAudioConstants.getContentType(currentConfig.contentType),
-            AAudioConstants.getPerformanceMode(currentConfig.performanceMode),
-            AAudioConstants.getSharingMode(currentConfig.sharingMode),
-            currentConfig.audioFilePath
-        )
+        // Configuration will be set via setAudioConfig() after loading from assets
     }
 
     /**
@@ -87,12 +83,29 @@ class AAudioPlayer(context: Context) {
             AudioAttributes.Builder().setUsage(AAudioConstants.getUsage(currentConfig.usage))
                 .setContentType(AAudioConstants.getContentType(currentConfig.contentType)).build()
 
-        audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-            .setAudioAttributes(audioAttributes).setAcceptsDelayedFocusGain(false)
+        val focusType = determineFocusType()
+
+        audioFocusRequest = AudioFocusRequest.Builder(focusType).setAudioAttributes(audioAttributes)
+            .setAcceptsDelayedFocusGain(false)
             .setOnAudioFocusChangeListener(audioFocusChangeListener).build()
 
         val result = audioManager.requestAudioFocus(audioFocusRequest!!)
         return result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+    }
+
+    /**
+     * Determine appropriate focus type based on usage scenario
+     */
+    private fun determineFocusType(): Int {
+        return when {
+            currentConfig.usage.contains("EMERGENCY") || currentConfig.usage.contains("SAFETY") -> AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+
+            currentConfig.usage.contains("NAVIGATION") || currentConfig.usage.contains("ANNOUNCEMENT") -> AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+
+            currentConfig.usage.contains("VOICE_COMMUNICATION") -> AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+
+            else -> AudioManager.AUDIOFOCUS_GAIN
+        }
     }
 
     /**
@@ -105,13 +118,13 @@ class AAudioPlayer(context: Context) {
         }
     }
 
-    fun setPlaybackListener(listener: PlaybackListener) {
+    fun setPlaybackListener(listener: PlaybackListener?) {
         this.listener = listener
     }
 
     fun setAudioConfig(config: AAudioConfig) {
-        if (isPlaying) {
-            Log.w(TAG, "Cannot change config while playing")
+        if (state == PlaybackState.PLAYING) {
+            Log.w(TAG, "Cannot change configuration while playing")
             return
         }
 
@@ -129,33 +142,36 @@ class AAudioPlayer(context: Context) {
     }
 
     fun startPlayback(): Boolean {
-        if (isPlaying) {
+        if (state == PlaybackState.PLAYING) {
             Log.w(TAG, "Already playing")
             listener?.onPlaybackError("Already playing")
             return false
+        }
+        if (state == PlaybackState.ERROR) {
+            state = PlaybackState.IDLE
         }
 
         // Validate audio file path (basic checks before native layer)
         val audioPath = currentConfig.audioFilePath
         if (audioPath.isBlank()) {
-            val error = "Invalid audio file path: empty or blank"
+            val error =
+                "${AAudioConstants.ErrorTypes.PARAM} Invalid audio file path: empty or blank"
             Log.e(TAG, error)
             listener?.onPlaybackError(error)
             return false
         }
         if (!audioPath.lowercase().endsWith(".wav")) {
-            val error = "Invalid audio file path: must end with .wav"
+            val error =
+                "${AAudioConstants.ErrorTypes.PARAM} Invalid audio file path: must end with .wav"
             Log.e(TAG, error)
             listener?.onPlaybackError(error)
             return false
         }
 
-        stopNativePlayback() // Ensure previous playback is stopped first
-
         // Request audio focus
         if (!requestAudioFocus()) {
             Log.e(TAG, "Unable to obtain audio focus")
-            listener?.onPlaybackError("Unable to obtain audio focus")
+            listener?.onPlaybackError("${AAudioConstants.ErrorTypes.FOCUS} Unable to obtain audio focus")
             return false
         }
 
@@ -168,29 +184,26 @@ class AAudioPlayer(context: Context) {
         return result
     }
 
-    fun stopPlayback(): Boolean {
-        if (!isPlaying) {
-            Log.w(TAG, "Not currently playing")
-            listener?.onPlaybackError("Not currently playing")
-            return false
+    fun stopPlayback() {
+        if (state != PlaybackState.PLAYING) {
+            return
         }
 
         Log.d(TAG, "Stopping playback")
 
         stopNativePlayback()
-        abandonAudioFocus() // Release focus when stopping playback
-        // Status update will be handled through native callback
-        return true
+        abandonAudioFocus()
     }
 
     fun isPlaying(): Boolean {
-        return isPlaying
+        return state == PlaybackState.PLAYING
     }
 
     fun release() {
-        if (isPlaying) {
+        if (state == PlaybackState.PLAYING) {
             stopPlayback()
         }
+        listener = null
         try {
             releaseNative()
         } catch (e: Exception) {
@@ -202,7 +215,7 @@ class AAudioPlayer(context: Context) {
     // Native methods
     private external fun initializeNative(filePath: String): Boolean
     private external fun startNativePlayback(): Boolean
-    private external fun stopNativePlayback()
+    private external fun stopNativePlayback(): Boolean
     private external fun releaseNative()
     private external fun setNativeConfig(
         usage: Int, contentType: Int, performanceMode: Int, sharingMode: Int, filePath: String
@@ -211,21 +224,21 @@ class AAudioPlayer(context: Context) {
     // Callback methods called from Native layer
     @Suppress("unused")
     private fun onNativePlaybackStarted() {
-        isPlaying = true
+        state = PlaybackState.PLAYING
         listener?.onPlaybackStarted()
         Log.i(TAG, "Playback started successfully")
     }
 
     @Suppress("unused")
     private fun onNativePlaybackStopped() {
-        isPlaying = false
+        state = PlaybackState.IDLE
         listener?.onPlaybackStopped()
         Log.i(TAG, "Playback stopped")
     }
 
     @Suppress("unused")
     private fun onNativePlaybackError(error: String) {
-        isPlaying = false
+        state = PlaybackState.ERROR
         abandonAudioFocus() // Release audio focus on error
         listener?.onPlaybackError(error)
         Log.e(TAG, "Playback error: $error")

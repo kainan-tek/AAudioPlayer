@@ -6,15 +6,16 @@
 #include <limits>
 #include <memory>
 #include <sstream>
+#include <string>
 
 #include <aaudio/AAudio.h>
 
 #define LATENCY_TEST_ENABLE 0
 
 #if LATENCY_TEST_ENABLE
-#include <cerrno>
 #include <fcntl.h>
 #include <unistd.h>
+#include <cerrno>
 
 #define LATENCY_TEST_GPIO_FILE "/sys/class/gpio/gpio376/value"
 #define LATENCY_TEST_INTERVAL 100
@@ -50,7 +51,7 @@ namespace {
 
 AudioPlayerState g_player;
 
-} // namespace
+}  // namespace
 
 #if LATENCY_TEST_ENABLE
 static bool initGpio() {
@@ -99,7 +100,7 @@ static inline void toggleGpio() {
 static void notifyPlaybackStarted() {
     if (g_player.jvm && g_player.player_instance && g_player.on_playback_started_method) {
         JNIEnv* env;
-        if (g_player.jvm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_OK) {
+        if (g_player.jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK) {
             env->CallVoidMethod(g_player.player_instance, g_player.on_playback_started_method);
         }
     }
@@ -108,7 +109,7 @@ static void notifyPlaybackStarted() {
 static void notifyPlaybackStopped() {
     if (g_player.jvm && g_player.player_instance && g_player.on_playback_stopped_method) {
         JNIEnv* env;
-        if (g_player.jvm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_OK) {
+        if (g_player.jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK) {
             env->CallVoidMethod(g_player.player_instance, g_player.on_playback_stopped_method);
         }
     }
@@ -117,7 +118,7 @@ static void notifyPlaybackStopped() {
 static void notifyPlaybackError(const std::string& error) {
     if (g_player.jvm && g_player.player_instance && g_player.on_playback_error_method) {
         JNIEnv* env;
-        if (g_player.jvm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_OK) {
+        if (g_player.jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK) {
             jstring error_str = env->NewStringUTF(error.c_str());
             env->CallVoidMethod(g_player.player_instance, g_player.on_playback_error_method, error_str);
             env->DeleteLocalRef(error_str);
@@ -125,28 +126,76 @@ static void notifyPlaybackError(const std::string& error) {
     }
 }
 
-static aaudio_data_callback_result_t
-audioCallback(AAudioStream* stream, void* userData, void* audioData, int32_t numFrames) {
-    if (!g_player.is_playing.load()) {
+static aaudio_data_callback_result_t audioCallback(AAudioStream* stream,
+                                                   void* userData,
+                                                   void* audioData,
+                                                   int32_t numFrames) {
+    if (!g_player.is_playing.load(std::memory_order_acquire)) {
         return AAUDIO_CALLBACK_RESULT_STOP;
     }
 
     if (!g_player.wav_file || !g_player.wav_file->isOpen()) {
-        g_player.is_playing.store(false);
+        g_player.is_playing.store(false, std::memory_order_release);
         notifyPlaybackError("[FILE] Audio file not opened");
         return AAUDIO_CALLBACK_RESULT_STOP;
     }
 
+    // Validate numFrames
+    if (numFrames <= 0) {
+        LOGE("Invalid numFrames: %d", numFrames);
+        return AAUDIO_CALLBACK_RESULT_STOP;
+    }
+
     int32_t channel_count = AAudioStream_getChannelCount(stream);
-    int32_t bytes_per_sample = (AAudioStream_getFormat(stream) == AAUDIO_FORMAT_PCM_I16) ? 2 : 4;
+    if (channel_count <= 0 || channel_count > 16) {
+        LOGE("Invalid channel count: %d", channel_count);
+        return AAUDIO_CALLBACK_RESULT_STOP;
+    }
+
+    // Get bytes per sample based on format
+    int32_t bytes_per_sample;
+    switch (AAudioStream_getFormat(stream)) {
+        case AAUDIO_FORMAT_PCM_I16:
+            bytes_per_sample = 2;
+            break;
+        case AAUDIO_FORMAT_PCM_I24_PACKED:
+            bytes_per_sample = 3;
+            break;
+        case AAUDIO_FORMAT_PCM_I32:
+        case AAUDIO_FORMAT_PCM_FLOAT:
+            bytes_per_sample = 4;
+            break;
+        default:
+            bytes_per_sample = 2;
+            break;
+    }
+
+    // Calculate bytes to read
     int32_t bytes_to_read = numFrames * channel_count * bytes_per_sample;
 
-    size_t bytes_read = g_player.wav_file->readAudioData(audioData, bytes_to_read);
+    // Clear buffer first to prevent residual data
+    memset(audioData, 0, static_cast<size_t>(bytes_to_read));
 
-    if (bytes_read < static_cast<size_t>(bytes_to_read)) {
-        g_player.is_playing.store(false);
+    size_t bytes_read = g_player.wav_file->readAudioData(audioData, static_cast<size_t>(bytes_to_read));
+
+    // bytes_read == 0 indicates end of file
+    if (bytes_read == 0) {
+        g_player.is_playing.store(false, std::memory_order_release);
         notifyPlaybackStopped();
         return AAUDIO_CALLBACK_RESULT_STOP;
+    }
+
+    // Read error (negative value)
+    if (bytes_read < 0) {
+        g_player.is_playing.store(false, std::memory_order_release);
+        notifyPlaybackError("[FILE] Audio read error");
+        return AAUDIO_CALLBACK_RESULT_STOP;
+    }
+
+    // Partial read (file ending), buffer already zero-filled
+    // Continue playing the remaining data, next callback will detect EOF
+    if (bytes_read < static_cast<size_t>(bytes_to_read)) {
+        return AAUDIO_CALLBACK_RESULT_CONTINUE;
     }
 
 #if LATENCY_TEST_ENABLE
@@ -176,7 +225,7 @@ audioCallback(AAudioStream* stream, void* userData, void* audioData, int32_t num
 
 static void errorCallback(AAudioStream* stream, void* userData, aaudio_result_t error) {
     LOGE("AAudio error: %s", AAudio_convertResultToText(error));
-    g_player.is_playing.store(false);
+    g_player.is_playing.store(false, std::memory_order_release);
     std::string error_msg = "[STREAM] Playback stream error: ";
     error_msg += AAudio_convertResultToText(error);
     notifyPlaybackError(error_msg);
@@ -252,8 +301,6 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_ini
                                                                                               jstring filePath) {
     LOGI("initializeNative");
 
-    env->GetJavaVM(&g_player.jvm);
-
     if (g_player.player_instance) {
         env->DeleteGlobalRef(g_player.player_instance);
     }
@@ -304,7 +351,7 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_sta
                                                                                                  jobject thiz) {
     LOGI("startNativePlayback");
 
-    if (g_player.is_playing.load()) {
+    if (g_player.is_playing.load(std::memory_order_acquire)) {
         return JNI_FALSE;
     }
 
@@ -337,12 +384,12 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_sta
     }
 #endif
 
-    g_player.is_playing.store(true);
+    g_player.is_playing.store(true, std::memory_order_release);
     aaudio_result_t result = AAudioStream_requestStart(g_player.stream);
 
     if (result != AAUDIO_OK) {
         LOGE("Failed to start: %s", AAudio_convertResultToText(result));
-        g_player.is_playing.store(false);
+        g_player.is_playing.store(false, std::memory_order_release);
         AAudioStream_close(g_player.stream);
         g_player.stream = nullptr;
         g_player.wav_file.reset();
@@ -350,15 +397,15 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_sta
         return JNI_FALSE;
     }
 
-    LOGI("Playback started successfully");
     notifyPlaybackStarted();
     return JNI_TRUE;
 }
 
-JNIEXPORT void JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_stopNativePlayback(JNIEnv* env, jobject thiz) {
+JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_stopNativePlayback(JNIEnv* env,
+                                                                                                jobject thiz) {
     LOGI("stopNativePlayback");
 
-    g_player.is_playing.store(false);
+    g_player.is_playing.store(false, std::memory_order_release);
 
     if (g_player.stream) {
         aaudio_result_t result = AAudioStream_requestStop(g_player.stream);
@@ -382,12 +429,13 @@ JNIEXPORT void JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_stopNat
 #endif
 
     notifyPlaybackStopped();
+    return JNI_TRUE;
 }
 
 JNIEXPORT void JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_releaseNative(JNIEnv* env, jobject thiz) {
     LOGI("Releasing AAudio player");
 
-    if (g_player.is_playing.load()) {
+    if (g_player.is_playing.load(std::memory_order_acquire)) {
         Java_com_example_aaudioplayer_player_AAudioPlayer_stopNativePlayback(env, thiz);
     }
 
@@ -401,14 +449,16 @@ JNIEXPORT void JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_release
     g_player.on_playback_stopped_method = nullptr;
     g_player.on_playback_error_method = nullptr;
 
-    LOGI("AAudio player released");
+    LOGI("AAudioPlayer released");
 }
 
-} // extern "C"
+}  // extern "C"
 
 WavFile::WavFile() : is_open_(false), header_{} {}
 
-WavFile::~WavFile() noexcept { close(); }
+WavFile::~WavFile() noexcept {
+    close();
+}
 
 bool WavFile::open(const std::string& filePath) {
     close();
@@ -432,8 +482,7 @@ bool WavFile::open(const std::string& filePath) {
     }
 
     is_open_ = true;
-    LOGI("Successfully opened WAV file: %s", filePath.c_str());
-    LOGI("Format: %s", getFormatInfo().c_str());
+    LOGI("WAV file opened: %s, %s", filePath.c_str(), getFormatInfo().c_str());
 
     return true;
 }
@@ -465,18 +514,20 @@ size_t WavFile::readAudioData(void* buffer, size_t bufferSize) {
     return bytes_read;
 }
 
-bool WavFile::isOpen() const { return is_open_; }
+bool WavFile::isOpen() const {
+    return is_open_;
+}
 
 int32_t WavFile::getAAudioFormat() const {
     switch (header_.bits_per_sample) {
-    case 16:
-        return 1;
-    case 24:
-        return 2;
-    case 32:
-        return 3;
-    default:
-        return 1;
+        case 16:
+            return AAUDIO_FORMAT_PCM_I16;
+        case 24:
+            return AAUDIO_FORMAT_PCM_I24_PACKED;
+        case 32:
+            return AAUDIO_FORMAT_PCM_I32;
+        default:
+            return AAUDIO_FORMAT_PCM_I16;
     }
 }
 

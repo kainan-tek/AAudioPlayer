@@ -15,6 +15,15 @@ object AAudioConstants {
     const val DEFAULT_AUDIO_FILE = "/data/48k_2ch_16bit.wav"
 
     /**
+     * Error type prefixes for consistent error handling
+     * Note: FILE and STREAM are used in native layer only
+     */
+    object ErrorTypes {
+        const val PARAM = "[PARAM]"
+        const val FOCUS = "[FOCUS]"
+    }
+
+    /**
      * AAudio native constants (matching NDK definitions)
      */
     object AAudio {
@@ -93,11 +102,17 @@ object AAudioConstants {
     private fun parseEnumValue(
         map: Map<Int, String>, value: String, default: Int, typeName: String = ""
     ): Int {
-        val result = map.entries.find { it.value == value }?.key ?: default
-        if (result == default && value.isNotEmpty()) {
-            android.util.Log.w("AAudioConstants", "Unknown $typeName value: $value, using default")
+        val entry = map.entries.find { it.value == value }
+        if (entry != null) {
+            return entry.key
         }
-        return result
+
+        if (value.isNotEmpty()) {
+            android.util.Log.w(
+                "AAudioConstants", "Unknown $typeName value: $value, using default: $default"
+            )
+        }
+        return default
     }
 
     /**
@@ -125,5 +140,4 @@ object AAudioConstants {
      */
     fun getSharingMode(sharingMode: String): Int =
         parseEnumValue(SharingMode.MAP, sharingMode, AAudio.SHARING_MODE_SHARED, "SharingMode")
-
 }
