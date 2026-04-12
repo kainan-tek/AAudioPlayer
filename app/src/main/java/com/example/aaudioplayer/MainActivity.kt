@@ -322,34 +322,20 @@ class MainActivity : AppCompatActivity() {
     /**
      * Convert technical error message to user-friendly message
      */
-    private fun getUserFriendlyErrorMessage(error: String): String {
-        return when {
-            error.startsWith(
-                "[FILE]", ignoreCase = true
-            ) -> "Unable to open audio file. The file may be corrupted or inaccessible."
-
-            error.startsWith(
-                "[STREAM]", ignoreCase = true
-            ) -> "Audio system initialization failed. Please try again."
-
-            error.startsWith(
-                "[PARAM]", ignoreCase = true
-            ) -> "Invalid audio configuration. Please select a different configuration."
-
-            error.startsWith(
-                "[FOCUS]", ignoreCase = true
-            ) -> "Unable to play audio. Another app may be using the audio system."
-
-            error.contains(
-                "Already playing", ignoreCase = true
-            ) -> "Playback is already in progress."
-
-            error.contains(
-                "Not currently playing", ignoreCase = true
-            ) -> "No playback is in progress."
-
-            else -> "Playback failed. Please try again."
-        }
+    private fun getUserFriendlyErrorMessage(error: String): String = when {
+        error.startsWith("[FILE]", ignoreCase = true) -> 
+            "Unable to open audio file. The file may be corrupted or inaccessible."
+        error.startsWith("[STREAM]", ignoreCase = true) -> 
+            "Audio system initialization failed. Please try again."
+        error.startsWith("[PARAM]", ignoreCase = true) -> 
+            "Invalid audio configuration. Please select a different configuration."
+        error.startsWith("[FOCUS]", ignoreCase = true) -> 
+            "Unable to play audio. Another app may be using the audio system."
+        error.contains("Already playing", ignoreCase = true) -> 
+            "Playback is already in progress."
+        error.contains("Not currently playing", ignoreCase = true) -> 
+            "No playback is in progress."
+        else -> "Playback failed. Please try again."
     }
 
     override fun onDestroy() {

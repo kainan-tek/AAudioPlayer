@@ -96,16 +96,14 @@ class AAudioPlayer(context: Context) {
     /**
      * Determine appropriate focus type based on usage scenario
      */
-    private fun determineFocusType(): Int {
-        return when {
-            currentConfig.usage.contains("EMERGENCY") || currentConfig.usage.contains("SAFETY") -> AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
-
-            currentConfig.usage.contains("NAVIGATION") || currentConfig.usage.contains("ANNOUNCEMENT") -> AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
-
-            currentConfig.usage.contains("VOICE_COMMUNICATION") -> AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
-
-            else -> AudioManager.AUDIOFOCUS_GAIN
-        }
+    private fun determineFocusType(): Int = when {
+        currentConfig.usage.contains("EMERGENCY") || currentConfig.usage.contains("SAFETY") -> 
+            AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+        currentConfig.usage.contains("NAVIGATION") || currentConfig.usage.contains("ANNOUNCEMENT") -> 
+            AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+        currentConfig.usage.contains("VOICE_COMMUNICATION") -> 
+            AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+        else -> AudioManager.AUDIOFOCUS_GAIN
     }
 
     /**

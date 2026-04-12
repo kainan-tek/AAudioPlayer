@@ -10,6 +10,18 @@
 
 #include <aaudio/AAudio.h>
 
+namespace {
+
+struct AAudioStreamDeleter {
+    void operator()(AAudioStream* s) const {
+        if (s)
+            AAudioStream_close(s);
+    }
+};
+using AAudioStreamPtr = std::unique_ptr<AAudioStream, AAudioStreamDeleter>;
+
+}  // namespace
+
 #define LATENCY_TEST_ENABLE 0
 
 #if LATENCY_TEST_ENABLE
@@ -21,10 +33,23 @@
 #define LATENCY_TEST_INTERVAL 100
 #endif
 
+/**
+ * Global audio player state
+ *
+ * Design decision: Using global state because:
+ * 1. Single instance per application (audio hardware is exclusive resource)
+ * 2. JNI library is loaded once per process
+ * 3. Simpler and more performant than instance management
+ * 4. No requirement for multiple simultaneous playback instances
+ *
+ * Thread safety: Protected by atomic operations and JNI calls from Java layer
+ * All state modifications are serialized through JNI method calls
+ */
 struct AudioPlayerState {
-    AAudioStream* stream = nullptr;
+    AAudioStreamPtr stream;
     std::unique_ptr<WavFile> wav_file;
     std::atomic<bool> is_playing{false};
+    std::atomic<bool> callback_notified{false};  // true if Java already notified by callback
 
     JavaVM* jvm = nullptr;
     jobject player_instance = nullptr;
@@ -49,7 +74,11 @@ struct AudioPlayerState {
 
 namespace {
 
-AudioPlayerState g_player;
+AudioPlayerState g_player;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+
+bool validatePlayerState() {
+    return !g_player.is_playing.load(std::memory_order_acquire);
+}
 
 }  // namespace
 
@@ -97,33 +126,61 @@ static inline void toggleGpio() {
 }
 #endif
 
-static void notifyPlaybackStarted() {
-    if (g_player.jvm && g_player.player_instance && g_player.on_playback_started_method) {
-        JNIEnv* env;
-        if (g_player.jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK) {
-            env->CallVoidMethod(g_player.player_instance, g_player.on_playback_started_method);
+// RAII helper: attach current thread to JVM if needed, detach on destruction
+struct JniThreadAttachment {
+    JavaVM* jvm;
+    JNIEnv* env = nullptr;
+    bool attached = false;
+
+    explicit JniThreadAttachment(JavaVM* vm) : jvm(vm) {
+        if (jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
+            if (jvm->AttachCurrentThread(&env, nullptr) == JNI_OK) {
+                attached = true;
+            }
         }
     }
+    ~JniThreadAttachment() {
+        if (attached) {
+            jvm->DetachCurrentThread();
+        }
+    }
+    [[nodiscard]] bool ok() const { return env != nullptr; }
+};
+
+static void notifyJavaCallback(jmethodID method, const char* name) {
+    if (!g_player.jvm || !g_player.player_instance || !method) {
+        LOGW("Cannot notify %s: JNI references not set", name);
+        return;
+    }
+    JniThreadAttachment attach(g_player.jvm);
+    if (!attach.ok()) {
+        LOGW("Failed to attach thread for JNI callback");
+        return;
+    }
+    attach.env->CallVoidMethod(g_player.player_instance, method);
+}
+
+static void notifyPlaybackStarted() {
+    notifyJavaCallback(g_player.on_playback_started_method, "playback started");
 }
 
 static void notifyPlaybackStopped() {
-    if (g_player.jvm && g_player.player_instance && g_player.on_playback_stopped_method) {
-        JNIEnv* env;
-        if (g_player.jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK) {
-            env->CallVoidMethod(g_player.player_instance, g_player.on_playback_stopped_method);
-        }
-    }
+    notifyJavaCallback(g_player.on_playback_stopped_method, "playback stopped");
 }
 
 static void notifyPlaybackError(const std::string& error) {
-    if (g_player.jvm && g_player.player_instance && g_player.on_playback_error_method) {
-        JNIEnv* env;
-        if (g_player.jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK) {
-            jstring error_str = env->NewStringUTF(error.c_str());
-            env->CallVoidMethod(g_player.player_instance, g_player.on_playback_error_method, error_str);
-            env->DeleteLocalRef(error_str);
-        }
+    if (!g_player.jvm || !g_player.player_instance || !g_player.on_playback_error_method) {
+        LOGW("Cannot notify playback error: JNI references not set");
+        return;
     }
+    JniThreadAttachment attach(g_player.jvm);
+    if (!attach.ok()) {
+        LOGW("Failed to attach thread for JNI callback");
+        return;
+    }
+    jstring error_str = attach.env->NewStringUTF(error.c_str());
+    attach.env->CallVoidMethod(g_player.player_instance, g_player.on_playback_error_method, error_str);
+    attach.env->DeleteLocalRef(error_str);
 }
 
 static aaudio_data_callback_result_t audioCallback(AAudioStream* stream,
@@ -136,6 +193,7 @@ static aaudio_data_callback_result_t audioCallback(AAudioStream* stream,
 
     if (!g_player.wav_file || !g_player.wav_file->isOpen()) {
         g_player.is_playing.store(false, std::memory_order_release);
+        g_player.callback_notified.store(true, std::memory_order_release);
         notifyPlaybackError("[FILE] Audio file not opened");
         return AAUDIO_CALLBACK_RESULT_STOP;
     }
@@ -181,14 +239,8 @@ static aaudio_data_callback_result_t audioCallback(AAudioStream* stream,
     // bytes_read == 0 indicates end of file
     if (bytes_read == 0) {
         g_player.is_playing.store(false, std::memory_order_release);
+        g_player.callback_notified.store(true, std::memory_order_release);
         notifyPlaybackStopped();
-        return AAUDIO_CALLBACK_RESULT_STOP;
-    }
-
-    // Read error (negative value)
-    if (bytes_read < 0) {
-        g_player.is_playing.store(false, std::memory_order_release);
-        notifyPlaybackError("[FILE] Audio read error");
         return AAUDIO_CALLBACK_RESULT_STOP;
     }
 
@@ -226,6 +278,8 @@ static aaudio_data_callback_result_t audioCallback(AAudioStream* stream,
 static void errorCallback(AAudioStream* stream, void* userData, aaudio_result_t error) {
     LOGE("AAudio error: %s", AAudio_convertResultToText(error));
     g_player.is_playing.store(false, std::memory_order_release);
+    g_player.callback_notified.store(true, std::memory_order_release);
+    // Notify Java so it calls stopNativePlayback to clean up resources
     std::string error_msg = "[STREAM] Playback stream error: ";
     error_msg += AAudio_convertResultToText(error);
     notifyPlaybackError(error_msg);
@@ -266,24 +320,26 @@ static bool createAAudioStream() {
     AAudioStreamBuilder_setDataCallback(builder, audioCallback, nullptr);
     AAudioStreamBuilder_setErrorCallback(builder, errorCallback, nullptr);
 
-    result = AAudioStreamBuilder_openStream(builder, &g_player.stream);
+    AAudioStream* raw_stream = nullptr;
+    result = AAudioStreamBuilder_openStream(builder, &raw_stream);
     AAudioStreamBuilder_delete(builder);
     if (result != AAUDIO_OK) {
         LOGE("Failed to open stream: %s", AAudio_convertResultToText(result));
         return false;
     }
+    g_player.stream.reset(raw_stream);
 
-    int32_t frames_per_burst = AAudioStream_getFramesPerBurst(g_player.stream);
+    int32_t frames_per_burst = AAudioStream_getFramesPerBurst(g_player.stream.get());
     if (frames_per_burst > 0) {
         int32_t optimal_size =
             frames_per_burst * (g_player.performance_mode == AAUDIO_PERFORMANCE_MODE_LOW_LATENCY ? 2 : 4);
-        optimal_size = std::min(optimal_size, AAudioStream_getBufferCapacityInFrames(g_player.stream));
-        AAudioStream_setBufferSizeInFrames(g_player.stream, optimal_size);
+        optimal_size = std::min(optimal_size, AAudioStream_getBufferCapacityInFrames(g_player.stream.get()));
+        AAudioStream_setBufferSizeInFrames(g_player.stream.get(), optimal_size);
     }
 
-    LOGI("Stream created: %dHz, %dch, format=%d, mode=%d", AAudioStream_getSampleRate(g_player.stream),
-         AAudioStream_getChannelCount(g_player.stream), AAudioStream_getFormat(g_player.stream),
-         AAudioStream_getPerformanceMode(g_player.stream));
+    LOGI("Stream created: %dHz, %dch, format=%d, mode=%d", AAudioStream_getSampleRate(g_player.stream.get()),
+         AAudioStream_getChannelCount(g_player.stream.get()), AAudioStream_getFormat(g_player.stream.get()),
+         AAudioStream_getPerformanceMode(g_player.stream.get()));
 
     return true;
 }
@@ -301,26 +357,56 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_ini
                                                                                               jstring filePath) {
     LOGI("initializeNative");
 
+    if (!validatePlayerState()) {
+        LOGE("Cannot initialize while playing");
+        return JNI_FALSE;
+    }
+
     if (g_player.player_instance) {
         env->DeleteGlobalRef(g_player.player_instance);
+        g_player.player_instance = nullptr;
     }
     g_player.player_instance = env->NewGlobalRef(thiz);
+    if (!g_player.player_instance) {
+        LOGE("Failed to create global reference");
+        return JNI_FALSE;
+    }
 
     jclass clazz = env->GetObjectClass(thiz);
+    if (!clazz) {
+        LOGE("Failed to get object class");
+        if (g_player.player_instance) {
+            env->DeleteGlobalRef(g_player.player_instance);
+            g_player.player_instance = nullptr;
+        }
+        return JNI_FALSE;
+    }
+
     g_player.on_playback_started_method = env->GetMethodID(clazz, "onNativePlaybackStarted", "()V");
     g_player.on_playback_stopped_method = env->GetMethodID(clazz, "onNativePlaybackStopped", "()V");
     g_player.on_playback_error_method = env->GetMethodID(clazz, "onNativePlaybackError", "(Ljava/lang/String;)V");
 
+    env->DeleteLocalRef(clazz);
+
     if (!g_player.on_playback_started_method || !g_player.on_playback_stopped_method ||
         !g_player.on_playback_error_method) {
         LOGE("Failed to get callback method IDs");
+        if (g_player.player_instance) {
+            env->DeleteGlobalRef(g_player.player_instance);
+            g_player.player_instance = nullptr;
+        }
         return JNI_FALSE;
     }
 
     if (filePath) {
         const char* path = env->GetStringUTFChars(filePath, nullptr);
-        g_player.audio_file_path = std::string(path);
-        env->ReleaseStringUTFChars(filePath, path);
+        if (path) {
+            g_player.audio_file_path = std::string(path);
+            env->ReleaseStringUTFChars(filePath, path);
+        } else {
+            LOGE("Failed to get file path string");
+            return JNI_FALSE;
+        }
     }
 
     return JNI_TRUE;
@@ -330,6 +416,11 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_set
     JNIEnv* env, jobject thiz, jint usage, jint contentType, jint performanceMode, jint sharingMode, jstring filePath) {
     LOGI("setNativeConfig");
 
+    if (!validatePlayerState()) {
+        LOGE("Cannot change config while playing");
+        return JNI_FALSE;
+    }
+
     g_player.usage = static_cast<aaudio_usage_t>(usage);
     g_player.content_type = static_cast<aaudio_content_type_t>(contentType);
     g_player.performance_mode = static_cast<aaudio_performance_mode_t>(performanceMode);
@@ -337,8 +428,13 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_set
 
     if (filePath) {
         const char* path = env->GetStringUTFChars(filePath, nullptr);
-        g_player.audio_file_path = std::string(path);
-        env->ReleaseStringUTFChars(filePath, path);
+        if (path) {
+            g_player.audio_file_path = std::string(path);
+            env->ReleaseStringUTFChars(filePath, path);
+        } else {
+            LOGE("Failed to get file path string");
+            return JNI_FALSE;
+        }
     }
 
     LOGI("Config updated: usage=%d, contentType=%d, performanceMode=%d, sharingMode=%d, file=%s", g_player.usage,
@@ -354,6 +450,8 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_sta
     if (g_player.is_playing.load(std::memory_order_acquire)) {
         return JNI_FALSE;
     }
+
+    g_player.callback_notified.store(false, std::memory_order_release);
 
     g_player.wav_file = std::make_unique<WavFile>();
     if (!g_player.wav_file->open(g_player.audio_file_path)) {
@@ -385,13 +483,12 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_sta
 #endif
 
     g_player.is_playing.store(true, std::memory_order_release);
-    aaudio_result_t result = AAudioStream_requestStart(g_player.stream);
+    aaudio_result_t result = AAudioStream_requestStart(g_player.stream.get());
 
     if (result != AAUDIO_OK) {
         LOGE("Failed to start: %s", AAudio_convertResultToText(result));
         g_player.is_playing.store(false, std::memory_order_release);
-        AAudioStream_close(g_player.stream);
-        g_player.stream = nullptr;
+        g_player.stream.reset();
         g_player.wav_file.reset();
         notifyPlaybackError("[STREAM] Failed to start playback stream");
         return JNI_FALSE;
@@ -408,18 +505,18 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_sto
     g_player.is_playing.store(false, std::memory_order_release);
 
     if (g_player.stream) {
-        aaudio_result_t result = AAudioStream_requestStop(g_player.stream);
+        aaudio_result_t result = AAudioStream_requestStop(g_player.stream.get());
         if (result != AAUDIO_OK) {
             LOGW("Failed to request stop: %s", AAudio_convertResultToText(result));
         } else {
             aaudio_stream_state_t state = AAUDIO_STREAM_STATE_STOPPING;
-            result = AAudioStream_waitForStateChange(g_player.stream, AAUDIO_STREAM_STATE_STOPPING, &state, 100000000);
+            result =
+                AAudioStream_waitForStateChange(g_player.stream.get(), AAUDIO_STREAM_STATE_STOPPING, &state, 100000000);
             if (result != AAUDIO_OK) {
                 LOGW("Failed to wait for stop: %s", AAudio_convertResultToText(result));
             }
         }
-        AAudioStream_close(g_player.stream);
-        g_player.stream = nullptr;
+        g_player.stream.reset();
     }
 
     g_player.wav_file.reset();
@@ -428,7 +525,11 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_sto
     closeGpio();
 #endif
 
-    notifyPlaybackStopped();
+    // Only notify stopped if callback hasn't already notified Java (error or EOF)
+    bool already_notified = g_player.callback_notified.exchange(false, std::memory_order_acq_rel);
+    if (!already_notified) {
+        notifyPlaybackStopped();
+    }
     return JNI_TRUE;
 }
 
@@ -507,10 +608,6 @@ size_t WavFile::readAudioData(void* buffer, size_t bufferSize) {
     file_.read(static_cast<char*>(buffer), read_size);
     auto bytes_read = static_cast<size_t>(file_.gcount());
 
-    if (bytes_read < bufferSize) {
-        memset(static_cast<char*>(buffer) + bytes_read, 0, bufferSize - bytes_read);
-    }
-
     return bytes_read;
 }
 
@@ -548,6 +645,10 @@ bool WavFile::isValidFormat() const {
 
 bool WavFile::readHeader() {
     file_.seekg(0, std::ios::beg);
+    if (!file_.good()) {
+        LOGE("Failed to seek to beginning of file");
+        return false;
+    }
     return validateRiffHeader() && readFmtChunk() && findDataChunk();
 }
 
@@ -654,6 +755,10 @@ void WavFile::skipChunk(uint32_t chunk_size) {
     }
 
     file_.seekg(static_cast<std::streamoff>(chunk_size), std::ios::cur);
+    if (!file_.good()) {
+        LOGE("Failed to skip chunk of size %u", chunk_size);
+        return;
+    }
 
     if (chunk_size % 2 == 1) {
         file_.seekg(1, std::ios::cur);

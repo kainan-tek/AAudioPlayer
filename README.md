@@ -13,6 +13,7 @@
 - [API 参考](#api-参考)
 - [故障排除](#故障排除)
 - [许可证](#许可证)
+- [联系方式](#联系方式)
 
 ## 项目简介
 
@@ -252,6 +253,23 @@ adb logcat -s AAudio
 
 本项目采用 MIT License 许可证。详细信息请参阅 [LICENSE](LICENSE) 文件。
 
----
-
 **注意**: 本项目仅供学习和测试使用，AAudio API 需要 Android 12L (API 32) 或更高版本。
+
+## 联系方式 
+
+ - **作者**: kainan-tek 
+ - **邮箱**: kainanos@outlook.com 
+ - **GitHub**: https://github.com/kainan-tek/AAudioPlayer 
+ - **问题反馈**: `https://github.com/kainan-tek/AAudioPlayer/issues` 
+
+ ---
+
+ <div align="center"> 
+
+ **如果这个项目对你有帮助，请给个 ⭐ Star！** 
+
+ Made with ❤️ by kainan-tek 
+
+ [⬆ 回到顶部](#aaudioplayer) 
+
+ </div>

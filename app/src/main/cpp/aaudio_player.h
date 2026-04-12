@@ -87,6 +87,7 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudioplayer_player_AAudioPlayer_set
 class WavFile {
 public:
     // WAV file header structure
+#pragma pack(push, 1)
     struct WavHeader {
         char riff_id[4];     // "RIFF"
         uint32_t riff_size;  // File size - 8
@@ -103,6 +104,7 @@ public:
         char data_id[4];     // "data"
         uint32_t data_size;  // Audio data size
     };
+#pragma pack(pop)
 
     /**
      * Constructor
@@ -118,9 +120,9 @@ public:
     WavFile(const WavFile&) = delete;
     WavFile& operator=(const WavFile&) = delete;
 
-    // Allow move
-    WavFile(WavFile&&) noexcept = default;
-    WavFile& operator=(WavFile&&) noexcept = default;
+    // Disable move (WavFile is always managed via unique_ptr)
+    WavFile(WavFile&&) = delete;
+    WavFile& operator=(WavFile&&) = delete;
 
     /**
      * Open WAV file

@@ -101,18 +101,13 @@ object AAudioConstants {
      */
     private fun parseEnumValue(
         map: Map<Int, String>, value: String, default: Int, typeName: String = ""
-    ): Int {
-        val entry = map.entries.find { it.value == value }
-        if (entry != null) {
-            return entry.key
-        }
-
+    ): Int = map.entries.find { it.value == value }?.key ?: run {
         if (value.isNotEmpty()) {
             android.util.Log.w(
                 "AAudioConstants", "Unknown $typeName value: $value, using default: $default"
             )
         }
-        return default
+        default
     }
 
     /**
